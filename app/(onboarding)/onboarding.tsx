@@ -6,6 +6,7 @@ import {
     Dimensions,
     FlatList,
     Image,
+    ImageBackground,
     NativeScrollEvent,
     NativeSyntheticEvent,
     StyleSheet,
@@ -21,7 +22,7 @@ const slides = [
   {
     id: '1',
     title: 'Report Lost Items\nEffortlessly',
-    description: 'Lost something? Report it fast with photos and location—well do the searching for you.',
+    description: 'Lost something? Report it fast with photos and location. We will do the searching for you.',
     image: require('../../assets/images/screen1.png'),
   },
   {
@@ -53,12 +54,12 @@ export default function OnboardingScreen() {
     if (currentIndex < slides.length - 1) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
     } else {
-      console.log('Go to login');
+      router.push('/(auth)/signup');
     }
   };
 
   const handleSkip = () => {
-    console.log('Skip to login');
+    router.push('/(auth)/signup');
   };
 
   const renderSlide = ({ item }: { item: typeof slides[0] }) => (
@@ -76,48 +77,56 @@ export default function OnboardingScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-        <Text style={styles.skipText}>Skip</Text>
-      </TouchableOpacity>
-
-      <FlatList
-        ref={flatListRef}
-        data={slides}
-        renderItem={renderSlide}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        keyExtractor={(item) => item.id}
-      />
-
-      <View style={styles.footer}>
-        <View style={styles.pagination}>
-          {slides.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.dot,
-                index === currentIndex && styles.activeDot,
-              ]}
-            />
-          ))}
-        </View>
-
-        <TouchableOpacity style={styles.button} onPress={handleContinue}>
-          <Text style={styles.buttonText}>Continue</Text>
+    <ImageBackground
+      source={require('../../assets/images/background.jpg')}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <View style={styles.container}>
+        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+          <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
+
+        <FlatList
+          ref={flatListRef}
+          data={slides}
+          renderItem={renderSlide}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          keyExtractor={(item) => item.id}
+        />
+
+        <View style={styles.footer}>
+          <View style={styles.pagination}>
+            {slides.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.dot,
+                  index === currentIndex && styles.activeDot,
+                ]}
+              />
+            ))}
+          </View>
+
+          <TouchableOpacity style={styles.button} onPress={handleContinue}>
+            <Text style={styles.buttonText}>Continue</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   skipButton: {
     alignSelf: 'flex-end',

@@ -1,101 +1,105 @@
-import { Link } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// app/index.tsx
 
-export default function SplashScreen() {
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Colors from '../constants/Colors';
+
+export default function WelcomeScreen() {
+  const router = useRouter();
+
   return (
     <ImageBackground
-    source={require('../assets/images/background.jpg')}
-    style={styles.background}
-    resizeMode='cover'
+      source={require('../assets/images/background.jpg')}
+      style={styles.background}
+      resizeMode="cover"
     >
-  <View style={styles.container}>
-    <StatusBar style="dark" />
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('../assets/images/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
 
-    {/* Top section */}
-    <View style={styles.topSection}>
-      <Image
-        source={require('../assets/images/logo.png')}
-        style={styles.logo}
-      />
-      <Text style={styles.tagline}>Find it. Report it. Return it.</Text>
-    </View>
+          <Text style={styles.tagline}>Find it. Report it. Return it.</Text>
+        </View>
 
-    {/* Bottom section */}
-    <View style={styles.bottomSection}>
-      <Link href="/(onboarding)/onboarding" asChild>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Get Started</Text>
-        </TouchableOpacity>
-      </Link>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => router.push('/(onboarding)/onboarding')}
+          >
+            <Text style={styles.buttonText}>Get Started</Text>
+          </TouchableOpacity>
 
-      <TouchableOpacity>
-        <Text style={styles.loginText}>
-          Already have an account? <Text style={{ fontWeight: 'bold' }}>Login</Text>
-        </Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-  </ImageBackground>
-);
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/login')}
+            style={styles.loginLink}
+          >
+            <Text style={styles.loginText}>
+              Already have an account? <Text style={styles.loginTextBold}>Login</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </ImageBackground>
+  );
 }
 
 const styles = StyleSheet.create({
   background: {
     flex: 1,
-    width: '100%',
-    height: '100%',
   },
-  
   container: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
   },
-
+  logoContainer: {
+    marginBottom: 20,
+  },
   logo: {
     width: 200,
     height: 180,
-    resizeMode: 'contain',
-    marginBottom: 20,
   },
   tagline: {
     fontSize: 24,
     fontWeight: '600',
     textAlign: 'center',
-    color: '#444',
-    marginBottom: 20,
+    color: Colors.textSecondary,
+    marginTop: 20,
+  },
+  buttonContainer: {
+    marginBottom: 40,
   },
   button: {
-    backgroundColor: '#0A1D37',
+    backgroundColor: Colors.primary,
     paddingVertical: 15,
-    borderRadius: 30,
+    borderRadius: 10,
     alignItems: 'center',
-    width: '100%',
-    position: 'absolute',
-    bottom: 70,
-    alignSelf: 'center',
+    marginBottom: 15,
   },
   buttonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 16,
+    fontWeight: '600',
+  },
+  loginLink: {
+    alignItems: 'center',
   },
   loginText: {
-    color: '#0A1D37',
-    fontSize: 18,
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
-  topSection: {
-  flex: 1,
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-
-bottomSection: {
-  width: '100%',
-  paddingBottom: 40,
-  alignItems: 'center',
-  gap: 15,
-},
-
+  loginTextBold: {
+    fontWeight: '700',
+    color: Colors.primary,
+  },
 });

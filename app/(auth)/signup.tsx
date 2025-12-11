@@ -1,30 +1,33 @@
-// app/(auth)/login.tsx
+// app/(auth)/signup.tsx
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Colors from '../../constants/Colors';
 
-export default function LoginScreen() {
+export default function SignUpScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const handleLogin = () => {
-    // TODO: Implement login logic
-    console.log('Login with:', email, password);
-    // For now, navigate to home
-    // router.push('/(tabs)/home');
+  const handleSignUp = () => {
+    // TODO: Implement sign up logic
+    console.log('Sign up with:', email, password);
+    // For now, navigate to email verification
+    router.push('/(auth)/email-verification');
   };
 
   return (
@@ -41,9 +44,9 @@ export default function LoginScreen() {
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>
-              Fill in the details to log in to your account
+              Join the campus community to recover lost items
             </Text>
           </View>
 
@@ -64,7 +67,7 @@ export default function LoginScreen() {
 
             {/* Password Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>Create Password</Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
@@ -86,29 +89,45 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* Login Button */}
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handleLogin}
-            >
-              <Text style={styles.buttonText}>Login</Text>
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Or continue with</Text>
-              <View style={styles.dividerLine} />
+            {/* Confirm Password Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Confirm Password</Text>
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="******"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={Colors.textLight}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {/* Sign Up Link */}
-            <TouchableOpacity
-              onPress={() => router.push('/(auth)/signup')}
-              style={styles.signupLink}
-            >
-              <Text style={styles.signupText}>
-                Don't have an account? <Text style={styles.signupTextBold}>Sign Up</Text>
+            {/* Terms and Conditions */}
+            <View style={styles.termsContainer}>
+              <Text style={styles.termsText}>
+                By creating an account you agree to our{' '}
+                <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+                <Text style={styles.termsLink}>Privacy Policy</Text>
               </Text>
+            </View>
+
+            {/* Continue Button */}
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleSignUp}
+            >
+              <Text style={styles.buttonText}>Continue</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -188,43 +207,28 @@ const styles = StyleSheet.create({
   eyeIcon: {
     padding: 10,
   },
+  termsContainer: {
+    marginBottom: 30,
+  },
+  termsText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
   button: {
     backgroundColor: Colors.primary,
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 10,
   },
   buttonText: {
     color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 30,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  dividerText: {
-    marginHorizontal: 10,
-    fontSize: 14,
-    color: Colors.textLight,
-  },
-  signupLink: {
-    alignItems: 'center',
-  },
-  signupText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-  signupTextBold: {
-    fontWeight: '700',
-    color: Colors.primary,
   },
   pagination: {
     flexDirection: 'row',
