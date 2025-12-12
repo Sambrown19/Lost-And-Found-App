@@ -16,7 +16,7 @@ import Colors from '../../constants/Colors';
 
 export default function EmailVerificationScreen() {
   const router = useRouter();
-  const [code, setCode] = useState(['', '', '']);
+  const [code, setCode] = useState(['', '', '', '']); 
   const [timer, setTimer] = useState(15);
   const [canResend, setCanResend] = useState(false);
   
@@ -41,12 +41,12 @@ export default function EmailVerificationScreen() {
       setCode(newCode);
 
       // Auto-focus next input
-      if (value && index < 2) {
+      if (value && index < 3) { // Changed to 3
         inputRefs.current[index + 1]?.focus();
       }
 
       // Auto-dismiss keyboard when all fields are filled
-      if (index === 2 && value) {
+      if (index === 3 && value) { // Changed to 3
         Keyboard.dismiss();
       }
     }
@@ -73,7 +73,7 @@ export default function EmailVerificationScreen() {
       console.log('Resend verification code');
       setTimer(15);
       setCanResend(false);
-      setCode(['', '', '']);
+      setCode(['', '', '', '']); // Changed to 4 empty strings
     }
   };
 
@@ -114,8 +114,8 @@ export default function EmailVerificationScreen() {
                 keyboardType="number-pad"
                 maxLength={1}
                 textAlign="center"
-                returnKeyType={index === 2 ? 'done' : 'next'}
-                blurOnSubmit={index === 2}
+                returnKeyType={index === 3 ? 'done' : 'next'} // Changed to 3
+                blurOnSubmit={index === 3} // Changed to 3
               />
             ))}
           </View>
@@ -188,12 +188,12 @@ const styles = StyleSheet.create({
   codeContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 15,
+    gap: 12, // Slightly reduced gap for 4 inputs
     marginBottom: 30,
   },
   codeInput: {
-    width: 70,
-    height: 70,
+    width: 65, // Slightly smaller width for 4 inputs
+    height: 65,
     backgroundColor: Colors.white,
     borderWidth: 1,
     borderColor: Colors.border,

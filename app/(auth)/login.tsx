@@ -24,7 +24,7 @@ export default function LoginScreen() {
     // TODO: Implement login logic
     console.log('Login with:', email, password);
     // For now, navigate to home
-    // router.push('/(tabs)/home');
+    router.push('/(tabs)/home');
   };
 
   return (
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: 8,
+    marginBottom: 15,
   },
   subtitle: {
     fontSize: 14,
@@ -152,6 +152,7 @@ const styles = StyleSheet.create({
   },
   form: {
     flex: 1,
+    
   },
   inputContainer: {
     marginBottom: 20,
@@ -193,7 +194,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 200,
   },
   buttonText: {
     color: Colors.white,

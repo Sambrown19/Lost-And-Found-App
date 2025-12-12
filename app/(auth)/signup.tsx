@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'flex-start',
-    marginBottom: 30,
+    marginBottom: 10,
   },
   logo: {
     width: 60,
