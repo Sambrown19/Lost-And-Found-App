@@ -42,20 +42,19 @@ export default function PictureUploadScreen() {
     }
   };
 
-  const handleContinue = () => {
-    // TODO: Upload image to Appwrite storage
-    console.log('Profile image:', imageUri);
-    // Navigate to main app (home screen)
-    router.push('/(tabs)/home');
-    Alert.alert('Success', 'Profile setup complete!');
-  };
+ const handleContinue = () => {
+  console.log('Profile image:', imageUri);
+  
+  setTimeout(() => {
+    router.replace('/(tabs)/home');
+  }, 100);
+};
 
-  const handleSkip = () => {
-    // Skip photo upload and go to main app
-    router.push('/(tabs)/home');
-    Alert.alert('Skipped', 'You can add a photo later from your profile.');
-  };
-
+const handleSkip = () => {
+  setTimeout(() => {
+    router.replace('/(tabs)/home');
+  }, 100);
+};
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />

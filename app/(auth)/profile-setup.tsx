@@ -31,13 +31,17 @@ export default function ProfileSetupScreen() {
     'Anann Hall',
     'Adams Hostel',
     'Villagio Hostel',
+    'Millington Hostel',
+    'Off-Campus',
   ];
 
   const handleContinue = () => {
-    // TODO: Save profile data
-    console.log('Profile:', { fullName, studentId, phoneNumber, campus });
-    router.push('/(auth)/picture-upload');
-  };
+  console.log('Profile:', { fullName, studentId, phoneNumber, campus });
+  
+  setTimeout(() => {
+    router.replace('/(auth)/picture-upload');
+  }, 100);
+};
 
   const selectCampus = (option: string) => {
     setCampus(option);

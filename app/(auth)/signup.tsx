@@ -1,9 +1,12 @@
 // app/(auth)/signup.tsx
 
 import { Ionicons } from '@expo/vector-icons';
+import { ID } from 'appwrite';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
     Image,
     ScrollView,
     StyleSheet,
@@ -12,6 +15,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { account } from '../../config/appwrite';
 import Colors from '../../constants/Colors';
 
 export default function SignUpScreen() {
@@ -21,19 +25,92 @@ export default function SignUpScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSignUp = () => {
-    // TODO: Implement sign up logic
-    console.log('Sign up with:', email, password);
-    // For now, navigate to email verification
-    router.push('/(auth)/email-verification');
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@pentvars\.edu\.gh$/;
+    return emailRegex.test(email.toLowerCase());
+  };
+
+  const validatePassword = (password: string) => {
+    return password.length >= 8;
+  };
+
+  const handleSignUp = async () => {
+    if (!email || !password || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      Alert.alert(
+        'Invalid Email', 
+        'Please use your Pentecost University email address (@pentvars.edu.gh)'
+      );
+      return;
+    }
+
+    if (!validatePassword(password)) {
+      Alert.alert('Weak Password', 'Password must be at least 8 characters long');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'Passwords do not match. Please try again.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Check if there's an existing session and delete it
+      try {
+        await account.deleteSession('current');
+        console.log('Existing session deleted');
+      } catch (error) {
+        // No active session, continue
+        console.log('No existing session');
+      }
+
+      // Create account in Appwrite
+      const response = await account.create(
+        ID.unique(),
+        email.toLowerCase(),
+        password,
+        email.split('@')[0]
+      );
+
+      // Navigate directly without Alert
+        setTimeout(() => {
+        router.replace('/(auth)/complete-profile');
+        }, 100);
+
+      // Create session (login the user)
+      await account.createEmailPasswordSession(email.toLowerCase(), password);
+
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      
+      if (error.code === 409) {
+        Alert.alert('Account Exists', 'An account with this email already exists. Please login.');
+      } else if (error.code === 429) {
+        Alert.alert(
+          'Too Many Attempts', 
+          'Rate limit exceeded. Please wait a few minutes and try again.'
+        );
+      } else if (error.code === 400) {
+        Alert.alert('Invalid Input', 'Please check your email and password and try again.');
+      } else {
+        Alert.alert('Error', error.message || 'Failed to create account. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.container}>
-          {/* Logo */}
           <View style={styles.logoContainer}>
             <Image
               source={require('../../assets/images/logo.png')}
@@ -42,43 +119,42 @@ export default function SignUpScreen() {
             />
           </View>
 
-          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>
-              Join the campus community to recover lost items
+              Fill in the form to create your account, Get started with your journey
             </Text>
           </View>
 
-          {/* Form */}
           <View style={styles.form}>
-            {/* Email Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Student Email</Text>
               <TextInput
                 style={styles.input}
-                placeholder=""
+                placeholder="youremail@pentvars.edu.gh"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                editable={!loading}
               />
             </View>
 
-            {/* Password Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Create Password</Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="******"
+                  placeholder="Min. 8 characters"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
+                  editable={!loading}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeIcon}
+                  disabled={loading}
                 >
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -89,20 +165,21 @@ export default function SignUpScreen() {
               </View>
             </View>
 
-            {/* Confirm Password Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Confirm Password</Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="******"
+                  placeholder="Re-enter password"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showConfirmPassword}
+                  editable={!loading}
                 />
                 <TouchableOpacity
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                   style={styles.eyeIcon}
+                  disabled={loading}
                 >
                   <Ionicons
                     name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -113,7 +190,6 @@ export default function SignUpScreen() {
               </View>
             </View>
 
-            {/* Terms and Conditions */}
             <View style={styles.termsContainer}>
               <Text style={styles.termsText}>
                 By creating an account you agree to our{' '}
@@ -122,12 +198,16 @@ export default function SignUpScreen() {
               </Text>
             </View>
 
-            {/* Continue Button */}
             <TouchableOpacity
-              style={styles.button}
+              style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleSignUp}
+              disabled={loading}
             >
-              <Text style={styles.buttonText}>Continue</Text>
+              {loading ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <Text style={styles.buttonText}>Continue</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -149,7 +229,7 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 30,
   },
   logo: {
     width: 60,
@@ -224,6 +304,9 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: Colors.white,

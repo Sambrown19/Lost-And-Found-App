@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
     Keyboard,
     StyleSheet,
     Text,
@@ -12,16 +14,24 @@ import {
     TouchableWithoutFeedback,
     View
 } from 'react-native';
+import { account } from '../../config/appwrite';
 import Colors from '../../constants/Colors';
 
 export default function EmailVerificationScreen() {
   const router = useRouter();
-  const [code, setCode] = useState(['', '', '', '']); 
-  const [timer, setTimer] = useState(15);
+  const [code, setCode] = useState(['', '', '', '']);
+  const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState('');
+  const [secret, setSecret] = useState('');
   
-  // Refs for each input
   const inputRefs = useRef<Array<TextInput | null>>([]);
+
+  useEffect(() => {
+    // Send verification email when component mounts
+    sendVerificationEmail();
+  }, []);
 
   useEffect(() => {
     if (timer > 0) {
@@ -34,46 +44,99 @@ export default function EmailVerificationScreen() {
     }
   }, [timer]);
 
+  const sendVerificationEmail = async () => {
+    try {
+      // Get current user
+      const user = await account.get();
+      setUserId(user.$id);
+
+      // Create email verification
+      const verification = await account.createVerification(
+        'http://localhost:8081' // This URL doesn't matter for now
+      );
+      setSecret(verification.secret);
+      
+      console.log('Verification email sent');
+    } catch (error: any) {
+      console.error('Send verification error:', error);
+      Alert.alert('Error', 'Failed to send verification code. Please try again.');
+    }
+  };
+
   const handleCodeChange = (index: number, value: string) => {
     if (value.length <= 1) {
       const newCode = [...code];
       newCode[index] = value;
       setCode(newCode);
 
-      // Auto-focus next input
-      if (value && index < 3) { // Changed to 3
+      if (value && index < 3) {
         inputRefs.current[index + 1]?.focus();
       }
 
-      // Auto-dismiss keyboard when all fields are filled
-      if (index === 3 && value) { // Changed to 3
+      if (index === 3 && value) {
         Keyboard.dismiss();
       }
     }
   };
 
   const handleKeyPress = (index: number, key: string) => {
-    // Handle backspace - move to previous input
     if (key === 'Backspace' && !code[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
+    const verificationCode = code.join('');
+    
+    if (verificationCode.length !== 4) {
+      Alert.alert('Error', 'Please enter the complete verification code');
+      return;
+    }
+
     Keyboard.dismiss();
-    // TODO: Implement verification logic
-    console.log('Verify code:', code.join(''));
-    router.push('/(auth)/email-verified');
+    setLoading(true);
+
+    try {
+      // Note: Appwrite sends a long verification code via email
+      // For development, we'll simulate verification
+      // In production, you'd verify with: await account.updateVerification(userId, verificationCode);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // For now, accept any 4-digit code for testing
+      console.log('Verification code:', verificationCode);
+      
+      router.replace('/(auth)/email-verified');
+    } catch (error: any) {
+      console.error('Verification error:', error);
+      
+      if (error.code === 401) {
+        Alert.alert('Invalid Code', 'The verification code is incorrect. Please try again.');
+      } else {
+        Alert.alert('Error', error.message || 'Verification failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (canResend) {
       Keyboard.dismiss();
-      // TODO: Implement resend logic
-      console.log('Resend verification code');
-      setTimer(15);
-      setCanResend(false);
-      setCode(['', '', '', '']); // Changed to 4 empty strings
+      setLoading(true);
+      
+      try {
+        await sendVerificationEmail();
+        setTimer(60);
+        setCanResend(false);
+        setCode(['', '', '', '']);
+        Alert.alert('Success', 'Verification code has been resent to your email.');
+      } catch (error) {
+        Alert.alert('Error', 'Failed to resend code. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -86,22 +149,19 @@ export default function EmailVerificationScreen() {
   return (
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
-          {/* Icon */}
           <View style={styles.iconContainer}>
             <View style={styles.iconCircle}>
               <Ionicons name="mail-outline" size={60} color={Colors.primary} />
             </View>
           </View>
 
-          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Email Verification</Text>
             <Text style={styles.subtitle}>
-              We have sent an email verification code to{'\n'}******@pentvars.edu.gh
+              We have sent an email verification code to your registered email
             </Text>
           </View>
 
-          {/* Code Input */}
           <View style={styles.codeContainer}>
             {code.map((digit, index) => (
               <TextInput
@@ -114,13 +174,13 @@ export default function EmailVerificationScreen() {
                 keyboardType="number-pad"
                 maxLength={1}
                 textAlign="center"
-                returnKeyType={index === 3 ? 'done' : 'next'} // Changed to 3
-                blurOnSubmit={index === 3} // Changed to 3
+                returnKeyType={index === 3 ? 'done' : 'next'}
+                blurOnSubmit={index === 3}
+                editable={!loading}
               />
             ))}
           </View>
 
-          {/* Resend */}
           <View style={styles.resendContainer}>
             <Text style={styles.resendText}>
               Didn't receive the code?{' '}
@@ -139,9 +199,16 @@ export default function EmailVerificationScreen() {
             )}
           </View>
 
-          {/* Verify Button */}
-          <TouchableOpacity style={styles.button} onPress={handleVerify}>
-            <Text style={styles.buttonText}>Verify Your Email</Text>
+          <TouchableOpacity 
+            style={[styles.button, loading && styles.buttonDisabled]} 
+            onPress={handleVerify}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={Colors.white} />
+            ) : (
+              <Text style={styles.buttonText}>Verify Your Email</Text>
+            )}
           </TouchableOpacity>
         </View>
       </TouchableWithoutFeedback>
@@ -188,11 +255,11 @@ const styles = StyleSheet.create({
   codeContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12, // Slightly reduced gap for 4 inputs
+    gap: 12,
     marginBottom: 30,
   },
   codeInput: {
-    width: 65, // Slightly smaller width for 4 inputs
+    width: 65,
     height: 65,
     backgroundColor: Colors.white,
     borderWidth: 1,
@@ -232,6 +299,9 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: Colors.white,

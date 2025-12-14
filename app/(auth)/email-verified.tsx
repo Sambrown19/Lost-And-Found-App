@@ -16,7 +16,7 @@ export default function EmailVerifiedScreen() {
   const router = useRouter();
 
   const handleContinue = () => {
-    router.push('/(auth)/profile-setup');
+    router.replace('/(auth)/profile-setup');
   };
 
   return (

@@ -1,18 +1,49 @@
 // app/(tabs)/home.tsx
 
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
+    Image,
     ScrollView,
     StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import Colors from '../../constants/Colors';
+import { getInitials, getUserProfile } from '../../services/userService';
 
 export default function HomeScreen() {
+  const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const profile = await getUserProfile();
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Load profile error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  const firstName = userProfile?.fullName?.split(' ')[0] || 'User';
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
@@ -20,11 +51,20 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>SAS</Text>
-          </View>
+          {userProfile?.profileImage ? (
+            <Image
+              source={{ uri: userProfile.profileImage }}
+              style={styles.avatar}
+            />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {getInitials(userProfile?.fullName || '')}
+              </Text>
+            </View>
+          )}
           <View>
-            <Text style={styles.greeting}>Hello, Samuel 👋</Text>
+            <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
             <Text style={styles.subGreeting}>Find your lost items</Text>
           </View>
         </View>
@@ -74,7 +114,6 @@ export default function HomeScreen() {
 
       {/* Content */}
       <ScrollView style={styles.content}>
-        {/* Placeholder */}
         <View style={styles.emptyState}>
           <Ionicons name="search-outline" size={64} color={Colors.textLight} />
           <Text style={styles.emptyText}>No items found</Text>
@@ -86,6 +125,12 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -175,9 +220,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  reportFoundButton: {
-    // Could add different styling for Report Found if needed
-  },
+  reportFoundButton: {},
   reportIconContainer: {
     width: 45,
     height: 45,

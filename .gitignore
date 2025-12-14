@@ -8,6 +8,12 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+.expo-shared/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
 
 # Native
 .kotlin/
@@ -29,6 +35,11 @@ yarn-error.*
 # macOS
 .DS_Store
 *.pem
+
+# Temporary files
+*.swp
+*.swo
+*~
 
 # local env files
 .env*.local

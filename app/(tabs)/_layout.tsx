@@ -1,7 +1,7 @@
 // app/(tabs)/_layout.tsx
 
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'react-native';
 import Colors from '../../constants/Colors';
 
 export default function TabLayout() {
@@ -29,8 +29,15 @@ export default function TabLayout() {
         name="home"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+         tabBarIcon: ({ focused }) => (
+            <Image
+              source={require('../../assets/images/home-01.png')}
+              style={{
+                width: 24,
+                height: 24,
+                tintColor: focused ? Colors.primary : Colors.textLight,
+              }}
+            />
           ),
         }}
       />
@@ -38,8 +45,15 @@ export default function TabLayout() {
         name="messages"
         options={{
           title: 'Messages',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <Image
+              source={require('../../assets/images/Messages.png')}
+              style={{
+                width: 24,
+                height: 24,
+                tintColor: focused ? Colors.primary : Colors.textLight,
+              }}
+            />
           ),
         }}
       />
@@ -47,8 +61,15 @@ export default function TabLayout() {
         name="account"
         options={{
           title: 'Account',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <Image
+              source={require('../../assets/images/Account.png')}
+              style={{
+                width: 24,
+                height: 24,
+                tintColor: focused ? Colors.primary : Colors.textLight,
+              }}
+            />
           ),
         }}
       />

@@ -1,12 +1,38 @@
 // app/index.tsx
 
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { account } from '../config/appwrite';
 import Colors from '../constants/Colors';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    checkSession();
+  }, []);
+
+  const checkSession = async () => {
+    try {
+      // Check if user is already logged in
+      await account.get();
+      // User is logged in, redirect to home
+      router.replace('/(tabs)/home');
+    } catch (error) {
+      // No active session, show splash screen
+      setChecking(false);
+    }
+  };
+
+  if (checking) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <ImageBackground
@@ -50,6 +76,12 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+  },
   background: {
     flex: 1,
   },

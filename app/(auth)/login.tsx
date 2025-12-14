@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -12,6 +14,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { account } from '../../config/appwrite';
 import Colors from '../../constants/Colors';
 
 export default function LoginScreen() {
@@ -19,14 +22,65 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    // TODO: Implement login logic
-    console.log('Login with:', email, password);
-    // For now, navigate to home
-    router.push('/(tabs)/home');
+  const validateEmail = (email: string) => {
+    // Must end with @pentvars.edu.gh
+    const emailRegex = /^[^\s@]+@pentvars\.edu\.gh$/;
+    return emailRegex.test(email.toLowerCase());
   };
 
+  const handleLogin = async () => {
+  if (!email || !password) {
+    Alert.alert('Error', 'Please fill in all fields');
+    return;
+  }
+
+  if (!validateEmail(email)) {
+    Alert.alert(
+      'Invalid Email',
+      'Please use your Pentecost University email address (@pentvars.edu.gh)'
+    );
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    try {
+      await account.deleteSession('current');
+    } catch (error) {
+      // No active session
+    }
+
+    await account.createEmailPasswordSession(email.toLowerCase(), password);
+
+    console.log('Login successful');
+
+    // Use replace with a slight delay to ensure proper navigation
+    setTimeout(() => {
+      router.replace('/(tabs)/home');
+    }, 100);
+  } catch (error: any) {
+    console.error('Login error:', error);
+
+    if (error.code === 401) {
+      Alert.alert(
+        'Login Failed',
+        'Invalid email or password. Please check your credentials and try again.'
+      );
+    } else if (error.code === 429) {
+      Alert.alert(
+        'Too Many Attempts',
+        'Too many login attempts. Please try again later.'
+      );
+    } else {
+      Alert.alert('Error', error.message || 'Failed to login. Please try again.');
+    }
+  } finally {
+    setLoading(false);
+  }
+};
   return (
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.container}>
@@ -54,11 +108,12 @@ export default function LoginScreen() {
               <Text style={styles.label}>Student Email</Text>
               <TextInput
                 style={styles.input}
-                placeholder=""
+                placeholder="youremail@pentvars.edu.gh"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                editable={!loading}
               />
             </View>
 
@@ -68,14 +123,16 @@ export default function LoginScreen() {
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="******"
+                  placeholder="Enter your password"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
+                  editable={!loading}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeIcon}
+                  disabled={loading}
                 >
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -88,10 +145,15 @@ export default function LoginScreen() {
 
             {/* Login Button */}
             <TouchableOpacity
-              style={styles.button}
+              style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleLogin}
+              disabled={loading}
             >
-              <Text style={styles.buttonText}>Login</Text>
+              {loading ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <Text style={styles.buttonText}>Login</Text>
+              )}
             </TouchableOpacity>
 
             {/* Divider */}
@@ -105,6 +167,7 @@ export default function LoginScreen() {
             <TouchableOpacity
               onPress={() => router.push('/(auth)/signup')}
               style={styles.signupLink}
+              disabled={loading}
             >
               <Text style={styles.signupText}>
                 Don't have an account? <Text style={styles.signupTextBold}>Sign Up</Text>
@@ -143,7 +206,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: 15,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
@@ -152,7 +215,6 @@ const styles = StyleSheet.create({
   },
   form: {
     flex: 1,
-    
   },
   inputContainer: {
     marginBottom: 20,
@@ -194,7 +256,10 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 200,
+    marginTop: 10,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: Colors.white,
