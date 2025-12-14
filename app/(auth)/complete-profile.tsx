@@ -18,9 +18,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { account } from '../../config/appwrite';
 import Colors from '../../constants/Colors';
 import { createUserProfile, uploadProfileImage } from '../../services/userService';
-import { account } from '../../config/appwrite';
 
 export default function CompleteProfileScreen() {
   const router = useRouter();
@@ -105,6 +105,7 @@ export default function CompleteProfileScreen() {
       phoneNumber,
       campus,
       profileImage: profileImageUrl,
+      isVerified: true,
     });
 
      Alert.alert('Success', 'Profile created successfully!', [

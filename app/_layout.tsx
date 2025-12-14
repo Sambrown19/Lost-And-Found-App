@@ -12,10 +12,12 @@ export default function RootLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
       <Stack.Screen 
-        name="(tabs)" 
+        name="report-item"
         options={{
-          gestureEnabled: false, // Disable swipe back on main app
+          presentation: 'modal',
+          gestureEnabled: true,
         }}
       />
     </Stack>

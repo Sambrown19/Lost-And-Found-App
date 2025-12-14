@@ -104,8 +104,10 @@ export default function AccountScreen() {
             <View style={styles.profileInfo}>
               <View style={styles.nameContainer}>
                 <Text style={styles.profileName}>{userProfile?.fullName || 'User'}</Text>
-                <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-              </View>
+                {userProfile?.isVerified && (
+                    <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                )}
+                </View>
               <Text style={styles.profileEmail}>{userProfile?.email || ''}</Text>
             </View>
             <TouchableOpacity style={styles.editIconButton}>

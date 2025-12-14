@@ -12,6 +12,7 @@ export interface UserProfile {
   phoneNumber: string;
   campus: string;
   profileImage?: string;
+  isVerified?: boolean; 
 }
 
 export const createUserProfile = async (data: Omit<UserProfile, 'userId' | '$id'>) => {
@@ -30,6 +31,7 @@ export const createUserProfile = async (data: Omit<UserProfile, 'userId' | '$id'
         phoneNumber: data.phoneNumber,
         campus: data.campus,
         profileImage: data.profileImage || '',
+        isVerified: data.isVerified || false, // Added
       }
     );
     
@@ -87,8 +89,6 @@ export const updateUserProfile = async (data: Partial<UserProfile>) => {
 
 export const uploadProfileImage = async (imageUri: string) => {
   try {
-    // For now, return the local URI
-    // TODO: Implement Appwrite storage upload in production
     console.log('Saving profile image URI:', imageUri);
     return imageUri;
   } catch (error) {

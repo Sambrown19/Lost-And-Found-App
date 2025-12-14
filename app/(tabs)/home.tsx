@@ -1,6 +1,7 @@
 // app/(tabs)/home.tsx
 
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router'; // Add this line
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -16,8 +17,9 @@ import Colors from '../../constants/Colors';
 import { getInitials, getUserProfile } from '../../services/userService';
 
 export default function HomeScreen() {
-  const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<any>(null);
+    const router = useRouter();
+    const [loading, setLoading] = useState(true);
+    const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
     loadUserProfile();
@@ -64,9 +66,14 @@ export default function HomeScreen() {
             </View>
           )}
           <View>
-            <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
+                {userProfile?.isVerified && (
+                <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+                )}
+            </View>
             <Text style={styles.subGreeting}>Find your lost items</Text>
-          </View>
+            </View>
         </View>
         <TouchableOpacity style={styles.notificationButton}>
           <Ionicons name="notifications-outline" size={24} color={Colors.textPrimary} />
@@ -84,23 +91,29 @@ export default function HomeScreen() {
       </View>
 
       {/* Report Buttons */}
-      <View style={styles.reportButtons}>
-        <TouchableOpacity style={styles.reportButton}>
-          <View style={styles.reportIconContainer}>
+        <View style={styles.reportButtons}>
+        <TouchableOpacity 
+            style={styles.reportButton}
+            onPress={() => router.push('/report-item?type=lost')}
+        >
+            <View style={styles.reportIconContainer}>
             <Ionicons name="alert-circle-outline" size={24} color={Colors.primary} />
-          </View>
-          <Text style={styles.reportButtonText}>Report Lost</Text>
-          <Text style={styles.reportButtonSubtext}>Lost something?</Text>
+            </View>
+            <Text style={styles.reportButtonText}>Report Lost</Text>
+            <Text style={styles.reportButtonSubtext}>Lost something?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.reportButton, styles.reportFoundButton]}>
-          <View style={[styles.reportIconContainer, styles.reportFoundIconContainer]}>
+        <TouchableOpacity 
+            style={[styles.reportButton, styles.reportFoundButton]}
+            onPress={() => router.push('/report-item?type=found')}
+        >
+            <View style={[styles.reportIconContainer, styles.reportFoundIconContainer]}>
             <Ionicons name="checkmark-circle-outline" size={24} color="#4CAF50" />
-          </View>
-          <Text style={styles.reportButtonText}>Report Found</Text>
-          <Text style={styles.reportButtonSubtext}>Found something?</Text>
+            </View>
+            <Text style={styles.reportButtonText}>Report Found</Text>
+            <Text style={styles.reportButtonSubtext}>Found something?</Text>
         </TouchableOpacity>
-      </View>
+        </View>
 
       {/* Categories/Tabs */}
       <View style={styles.tabsContainer}>
