@@ -1,23 +1,25 @@
-// app/report-item.tsx
+// app/report-lost.tsx
 
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     Alert,
     Image,
+    KeyboardAvoidingView,
+    Platform,
     ScrollView,
     StatusBar,
     StyleSheet,
+    Switch,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
 import Colors from '../constants/Colors';
-
-type ItemType = 'lost' | 'found';
 
 interface Category {
   id: string;
@@ -34,27 +36,52 @@ const categories: Category[] = [
   { id: 'other', name: 'Other', icon: 'add-circle-outline' },
 ];
 
-export default function ReportItemScreen() {
+export default function ReportLostScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const itemType: ItemType = (params.type as ItemType) || 'lost';
 
   const [step, setStep] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [itemName, setItemName] = useState('');
   const [brand, setBrand] = useState('');
   const [color, setColor] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedTime, setSelectedTime] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
+  const [offerReward, setOfferReward] = useState(false);
   const [reward, setReward] = useState('');
 
-  const title = itemType === 'lost' ? 'Report Lost Item' : 'Report Found Item';
-  const subtitle = itemType === 'lost' 
-    ? 'Specify the category that best describes your lost item'
-    : 'Specify the category that best describes the item you found';
+  const formatDate = (date: Date) => {
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    return `${month}/${day}/${year}`;
+  };
+
+  const formatTime = (date: Date) => {
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${hours}:${minutes} ${ampm}`;
+  };
+
+  const onDateChange = (event: any, selected: Date | undefined) => {
+    setShowDatePicker(false);
+    if (selected) {
+      setSelectedDate(selected);
+    }
+  };
+
+  const onTimeChange = (event: any, selected: Date | undefined) => {
+    setShowTimePicker(false);
+    if (selected) {
+      setSelectedTime(selected);
+    }
+  };
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -82,7 +109,7 @@ export default function ReportItemScreen() {
   };
 
   const handleContinueStep2 = () => {
-    if (!itemName || !color || !date || !time || !location) {
+    if (!itemName || !color || !location) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
@@ -98,8 +125,7 @@ export default function ReportItemScreen() {
   };
 
   const handleSubmit = () => {
-    // TODO: Submit to Appwrite
-    Alert.alert('Success', `${itemType === 'lost' ? 'Lost' : 'Found'} item reported successfully!`, [
+    Alert.alert('Success', 'Lost item reported successfully!', [
       {
         text: 'OK',
         onPress: () => router.back(),
@@ -109,8 +135,10 @@ export default function ReportItemScreen() {
 
   const renderStep1 = () => (
     <>
-      <Text style={styles.stepTitle}>What did you {itemType === 'lost' ? 'lose' : 'find'}?</Text>
-      <Text style={styles.stepSubtitle}>{subtitle}</Text>
+      <Text style={styles.stepTitle}>What did you lose?</Text>
+      <Text style={styles.stepSubtitle}>
+        Specify the category that best describes your lost item
+      </Text>
 
       <View style={styles.categoriesGrid}>
         {categories.map((category) => (
@@ -147,7 +175,7 @@ export default function ReportItemScreen() {
         <View style={styles.tipContent}>
           <Text style={styles.tipTitle}>Quick Tip</Text>
           <Text style={styles.tipText}>
-            Choose the category that you feel best describes your {itemType === 'lost' ? 'lost' : 'found'} item. You'll be able to add more details in the next step.
+            Choose the category that you feel best describes your lost item. You'll be able to add more details in the next step.
           </Text>
         </View>
       </View>
@@ -196,29 +224,43 @@ export default function ReportItemScreen() {
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Date/Last Seen</Text>
-          <View style={styles.inputWithIcon}>
-            <TextInput
-              style={styles.inputWithIconText}
-              value={date}
-              onChangeText={setDate}
-              placeholder="mm/dd/yy"
-            />
+          <TouchableOpacity 
+            style={styles.inputWithIcon}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={styles.inputWithIconText}>{formatDate(selectedDate)}</Text>
             <Ionicons name="calendar-outline" size={20} color={Colors.textLight} />
-          </View>
+          </TouchableOpacity>
         </View>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="default"
+            onChange={onDateChange}
+          />
+        )}
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Time/Last Seen</Text>
-          <View style={styles.inputWithIcon}>
-            <TextInput
-              style={styles.inputWithIconText}
-              value={time}
-              onChangeText={setTime}
-              placeholder="9:00 AM"
-            />
+          <TouchableOpacity 
+            style={styles.inputWithIcon}
+            onPress={() => setShowTimePicker(true)}
+          >
+            <Text style={styles.inputWithIconText}>{formatTime(selectedTime)}</Text>
             <Ionicons name="time-outline" size={20} color={Colors.textLight} />
-          </View>
+          </TouchableOpacity>
         </View>
+
+        {showTimePicker && (
+          <DateTimePicker
+            value={selectedTime}
+            mode="time"
+            display="default"
+            onChange={onTimeChange}
+          />
+        )}
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Location/Last Seen</Text>
@@ -242,6 +284,7 @@ export default function ReportItemScreen() {
             placeholder="Add any additional details..."
             multiline
             numberOfLines={4}
+            textAlignVertical="top"
           />
         </View>
       </View>
@@ -284,9 +327,22 @@ export default function ReportItemScreen() {
         <Text style={styles.photoHint}>Upload photos of your lost item (up to 4 Photos)</Text>
       </View>
 
-      {itemType === 'lost' && (
+      <View style={styles.rewardToggle}>
+        <View>
+          <Text style={styles.rewardToggleLabel}>Offer Reward</Text>
+          <Text style={styles.rewardToggleSubtext}>Optional - Offer a reward for finder</Text>
+        </View>
+        <Switch
+          value={offerReward}
+          onValueChange={setOfferReward}
+          trackColor={{ false: '#D0D0D0', true: Colors.primary }}
+          thumbColor={Colors.white}
+        />
+      </View>
+
+      {offerReward && (
         <View style={styles.rewardSection}>
-          <Text style={styles.label}>Offer Reward</Text>
+          <Text style={styles.label}>Reward Amount</Text>
           <View style={styles.rewardInput}>
             <Text style={styles.currencySymbol}>GH₵</Text>
             <TextInput
@@ -324,9 +380,9 @@ export default function ReportItemScreen() {
       <Text style={styles.stepTitle}>Review & Submit</Text>
       <Text style={styles.stepSubtitle}>Please verify all information is accurate</Text>
 
-      <View style={styles.reviewSection}>
+      <View style={styles.reviewCard}>
         <Text style={styles.reviewTitle}>{itemName}</Text>
-        <Text style={styles.reviewBrand}>{brand}</Text>
+        {brand && <Text style={styles.reviewBrand}>{brand}</Text>}
 
         <View style={styles.photosPreview}>
           {photos.map((photo, index) => (
@@ -334,50 +390,57 @@ export default function ReportItemScreen() {
           ))}
         </View>
 
-        <View style={styles.reviewDetails}>
-          <View style={styles.reviewRow}>
-            <Text style={styles.reviewLabel}>Color</Text>
-            <Text style={styles.reviewValue}>{color}</Text>
+        <View style={styles.reviewDetailsSection}>
+          <View style={styles.reviewDetailRow}>
+            <Text style={styles.reviewDetailLabel}>Color</Text>
+            <Text style={styles.reviewDetailValue}>{color}</Text>
           </View>
-          <View style={styles.reviewRow}>
-            <Text style={styles.reviewLabel}>Category</Text>
-            <Text style={styles.reviewValue}>
+
+          <View style={styles.reviewDetailRow}>
+            <Text style={styles.reviewDetailLabel}>Category</Text>
+            <Text style={styles.reviewDetailValue}>
               {categories.find(c => c.id === selectedCategory)?.name}
             </Text>
           </View>
-          <View style={styles.reviewRow}>
-            <Text style={styles.reviewLabel}>Where/When</Text>
-            <View>
-              <Text style={styles.reviewValue}>{location}</Text>
-              <Text style={styles.reviewValueSmall}>
-                {date} • {time}
+
+          <View style={styles.reviewDetailRow}>
+            <Text style={styles.reviewDetailLabel}>Date/Time</Text>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.reviewDetailValue}>{location}</Text>
+              <Text style={styles.reviewDetailValueSmall}>
+                {formatDate(selectedDate)} • {formatTime(selectedTime)}
               </Text>
             </View>
           </View>
-          <View style={styles.reviewRow}>
-            <Text style={styles.reviewLabel}>Location</Text>
+
+          <View style={styles.reviewDetailRow}>
+            <Text style={styles.reviewDetailLabel}>Location</Text>
             <View style={styles.locationBadge}>
               <Ionicons name="location" size={14} color={Colors.primary} />
               <Text style={styles.locationText}>{location}</Text>
             </View>
           </View>
-          <View style={styles.reviewRow}>
-            <Text style={styles.reviewLabel}>Additional Description</Text>
-            <Text style={styles.reviewValue}>{description}</Text>
-          </View>
+
+          {description && (
+            <View style={styles.reviewDetailRow}>
+              <Text style={styles.reviewDetailLabel}>Description</Text>
+              <Text style={styles.reviewDetailValue}>{description}</Text>
+            </View>
+          )}
         </View>
 
-        {itemType === 'lost' && reward && (
-          <View style={styles.rewardDisplay}>
+        {offerReward && reward && (
+          <View style={styles.rewardReviewSection}>
             <Text style={styles.rewardDisplayLabel}>Offer Reward</Text>
             <Text style={styles.rewardDisplayAmount}>GH₵ {reward}</Text>
+            
             <View style={styles.importantBox}>
               <Ionicons name="warning-outline" size={20} color="#FF9800" />
               <View style={styles.importantContent}>
                 <Text style={styles.importantTitle}>Important</Text>
                 <Text style={styles.importantText}>
                   {'\u2022'} Any report will be visible to verified finders only{'\n'}
-                  {'\u2022'} Verified finders(s) will be listed on your report{'\n'}
+                  {'\u2022'} Verified finder(s) will be listed on your report{'\n'}
                   {'\u2022'} Reward will only be given once the item ownership is verified
                 </Text>
               </View>
@@ -393,10 +456,12 @@ export default function ReportItemScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
       
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => step > 1 ? setStep(step - 1) : router.back()}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
@@ -406,17 +471,21 @@ export default function ReportItemScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}
         {step === 3 && renderStep3()}
         {step === 4 && renderStep4()}
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-// (Keep all the styles the same from before)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -429,6 +498,7 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 15,
     gap: 15,
+    backgroundColor: Colors.background,
   },
   progressBar: {
     flex: 1,
@@ -443,7 +513,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   stepTitle: {
     fontSize: 24,
@@ -542,11 +615,12 @@ const styles = StyleSheet.create({
   },
   textArea: {
     height: 100,
-    textAlignVertical: 'top',
+    paddingTop: 12,
   },
   inputWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: Colors.white,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -555,7 +629,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   inputWithIconText: {
-    flex: 1,
     fontSize: 15,
     color: Colors.textPrimary,
   },
@@ -604,6 +677,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textLight,
   },
+  rewardToggle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  rewardToggleLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  rewardToggleSubtext: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
   rewardSection: {
     marginBottom: 20,
   },
@@ -629,14 +721,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.textPrimary,
   },
-  reviewSection: {
+  reviewCard: {
     backgroundColor: Colors.white,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 20,
   },
   reviewTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: Colors.textPrimary,
     marginBottom: 4,
@@ -648,35 +740,39 @@ const styles = StyleSheet.create({
   },
   photosPreview: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
+    gap: 10,
+    marginBottom: 24,
   },
   previewImage: {
-    width: 80,
-    height: 80,
+    width: 90,
+    height: 90,
     borderRadius: 8,
   },
-  reviewDetails: {
-    gap: 12,
+  reviewDetailsSection: {
+    gap: 16,
   },
-  reviewRow: {
+  reviewDetailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  reviewLabel: {
+  reviewDetailLabel: {
     fontSize: 14,
     color: Colors.textSecondary,
+    flex: 1,
   },
-  reviewValue: {
+  reviewDetailValue: {
     fontSize: 14,
     fontWeight: '600',
     color: Colors.textPrimary,
+    flex: 1,
     textAlign: 'right',
   },
-  reviewValueSmall: {
+  reviewDetailValueSmall: {
     fontSize: 12,
     color: Colors.textLight,
     textAlign: 'right',
+    marginTop: 2,
   },
   locationBadge: {
     flexDirection: 'row',
@@ -688,9 +784,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.primary,
   },
-  rewardDisplay: {
-    marginTop: 16,
-    paddingTop: 16,
+  rewardReviewSection: {
+    marginTop: 20,
+    paddingTop: 20,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
@@ -700,16 +796,16 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   rewardDisplayAmount: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   importantBox: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255, 152, 0, 0.1)',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 16,
     gap: 12,
   },
   importantContent: {
@@ -719,19 +815,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FF9800',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   importantText: {
     fontSize: 12,
     color: Colors.textSecondary,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   button: {
     backgroundColor: Colors.primary,
-    paddingVertical: 15,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 40,
+    marginTop: 10,
   },
   buttonText: {
     color: Colors.white,

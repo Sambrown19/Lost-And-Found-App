@@ -4,14 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router'; // Add this line
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Colors from '../../constants/Colors';
 import { getInitials, getUserProfile } from '../../services/userService';
@@ -94,7 +94,7 @@ export default function HomeScreen() {
         <View style={styles.reportButtons}>
         <TouchableOpacity 
             style={styles.reportButton}
-            onPress={() => router.push('/report-item?type=lost')}
+            onPress={() => router.push('/report-lost')}
         >
             <View style={styles.reportIconContainer}>
             <Ionicons name="alert-circle-outline" size={24} color={Colors.primary} />
@@ -105,7 +105,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity 
             style={[styles.reportButton, styles.reportFoundButton]}
-            onPress={() => router.push('/report-item?type=found')}
+            onPress={() => router.push('/report-found')}
         >
             <View style={[styles.reportIconContainer, styles.reportFoundIconContainer]}>
             <Ionicons name="checkmark-circle-outline" size={24} color="#4CAF50" />
