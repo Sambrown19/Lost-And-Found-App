@@ -19,6 +19,7 @@ import {
   View,
 } from 'react-native';
 import Colors from '../constants/Colors';
+import { createItem } from '../services/itemsService';
 
 interface Category {
   id: string;
@@ -109,14 +110,30 @@ export default function ReportFoundScreen() {
     setStep(step + 1);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+  try {
+    await createItem({
+      type: 'found',
+      title: itemName,
+      description: description || 'No additional description',
+      category: categories.find(c => c.id === selectedCategory)?.name || selectedCategory,
+      location: foundLocation,
+      date: `${formatDate(selectedDate)} ${formatTime(selectedTime)}`,
+      images: photos.join(','),
+      status: 'active',
+    });
+
     Alert.alert('Success', 'Found item reported successfully!', [
       {
         text: 'OK',
-        onPress: () => router.back(),
+        onPress: () => router.replace('/(tabs)/home'),
       },
     ]);
-  };
+  } catch (error: any) {
+    console.error('Submit error:', error);
+    Alert.alert('Error', 'Failed to submit report. Please try again.');
+  }
+};
 
   // Step 1: What did you find?
   const renderStep1 = () => (

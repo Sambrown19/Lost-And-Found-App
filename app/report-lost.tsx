@@ -6,20 +6,21 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Colors from '../constants/Colors';
+import { createItem } from '../services/itemsService';
 
 interface Category {
   id: string;
@@ -124,14 +125,30 @@ export default function ReportLostScreen() {
     setStep(4);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+  try {
+    await createItem({
+      type: 'lost',
+      title: itemName,
+      description: description || 'No additional description',
+      category: categories.find(c => c.id === selectedCategory)?.name || selectedCategory,
+      location: location,
+      date: `${formatDate(selectedDate)} ${formatTime(selectedTime)}`,
+      images: photos.join(','),
+      status: 'active',
+    });
+
     Alert.alert('Success', 'Lost item reported successfully!', [
       {
         text: 'OK',
-        onPress: () => router.back(),
+        onPress: () => router.replace('/(tabs)/home'),
       },
     ]);
-  };
+  } catch (error: any) {
+    console.error('Submit error:', error);
+    Alert.alert('Error', 'Failed to submit report. Please try again.');
+  }
+};
 
   const renderStep1 = () => (
     <>

@@ -14,6 +14,7 @@ export const storage = new Storage(client);
 
 export const DATABASE_ID = process.env.EXPO_PUBLIC_DATABASE_ID || '';
 export const USERS_COLLECTION_ID = process.env.EXPO_PUBLIC_USERS_COLLECTION_ID || '';
+export const ITEMS_COLLECTION_ID = process.env.EXPO_PUBLIC_ITEMS_COLLECTION_ID || '';
 export const STORAGE_BUCKET_ID = process.env.EXPO_PUBLIC_STORAGE_BUCKET_ID || '';
 
 export default client;
