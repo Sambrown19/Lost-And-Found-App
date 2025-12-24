@@ -1,4 +1,3 @@
-// app/report-lost.tsx
 
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -6,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -20,7 +20,7 @@ import {
   View,
 } from 'react-native';
 import Colors from '../constants/Colors';
-import { createItem } from '../services/itemsService';
+import { createItem, uploadImage } from '../services/itemsService';
 
 interface Category {
   id: string;
@@ -54,6 +54,25 @@ export default function ReportLostScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [offerReward, setOfferReward] = useState(false);
   const [reward, setReward] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [apiCallState, setApiCallState] = useState({
+    isLoading: false,
+    error: null as string | null,
+    success: false
+  });
+
+const [formData, setFormData] = useState({
+  type: 'lost' as 'lost' | 'found',
+  title: '',
+  description: '',
+  category: '',
+  location: '',
+  date: '',
+  images: [] as string[],
+  status: 'active',
+});
+
 
   const formatDate = (date: Date) => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -74,6 +93,10 @@ export default function ReportLostScreen() {
     setShowDatePicker(false);
     if (selected) {
       setSelectedDate(selected);
+      setFormData(prev => ({
+        ...prev,
+        date: `${formatDate(selected)} ${formatTime(selectedTime)}`
+      }));
     }
   };
 
@@ -81,31 +104,89 @@ export default function ReportLostScreen() {
     setShowTimePicker(false);
     if (selected) {
       setSelectedTime(selected);
+      setFormData(prev => ({
+        ...prev,
+        date: `${formatDate(selectedDate)} ${formatTime(selected)}`
+      }));
     }
   };
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 0.8,
-    });
 
-    if (!result.canceled) {
-      const newPhotos = result.assets.map(asset => asset.uri);
-      setPhotos([...photos, ...newPhotos]);
+const pickImage = async () => {
+  if (uploading) return;
+  
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsMultipleSelection: true,
+    quality: 0.8,
+  });
+
+  if (!result.canceled) {
+    try {
+      setUploading(true);
+      setUploadProgress(0);
+      
+      const newUris = result.assets.map(asset => asset.uri);
+      
+      const totalImages = newUris.length;
+      let uploadedCount = 0;
+      
+      const uploadedUrls = await Promise.all(
+        newUris.map(async (uri) => {
+          try {
+            const url = await uploadImage(uri);
+            uploadedCount++;
+            setUploadProgress(Math.round((uploadedCount / totalImages) * 100));
+            return url;
+          } catch (error) {
+            console.error('Single image upload failed:', error);
+            throw error;
+          }
+        })
+      );
+      
+      const updatedPhotos = [...photos, ...uploadedUrls];
+      setPhotos(updatedPhotos);
+      
+      setFormData(prev => ({
+        ...prev,
+        images: updatedPhotos
+      }));
+      
+      Alert.alert('Success', `${uploadedUrls.length} image(s) uploaded successfully!`);
+      
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      Alert.alert('Upload Failed', 'Failed to upload images. Please try again.');
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
     }
-  };
+  }
+};
 
-  const removePhoto = (index: number) => {
-    setPhotos(photos.filter((_, i) => i !== index));
-  };
+
+const removePhoto = (index: number) => {
+  const updatedPhotos = photos.filter((_, i) => i !== index);
+  
+  setPhotos(updatedPhotos);
+  
+  setFormData(prev => ({
+    ...prev,
+    images: updatedPhotos 
+  }));
+};
 
   const handleContinueStep1 = () => {
     if (!selectedCategory) {
       Alert.alert('Error', 'Please select a category');
       return;
     }
+    const categoryName = categories.find(c => c.id === selectedCategory)?.name || selectedCategory;
+    setFormData(prev => ({
+      ...prev,
+      category: categoryName
+    }));
     setStep(2);
   };
 
@@ -114,6 +195,12 @@ export default function ReportLostScreen() {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
+    setFormData(prev => ({
+      ...prev,
+      title: itemName,
+      location: location,
+      description: description
+    }));
     setStep(3);
   };
 
@@ -125,27 +212,34 @@ export default function ReportLostScreen() {
     setStep(4);
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
   try {
-    await createItem({
-      type: 'lost',
-      title: itemName,
-      description: description || 'No additional description',
-      category: categories.find(c => c.id === selectedCategory)?.name || selectedCategory,
-      location: location,
+    setApiCallState(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    const finalFormData = {
+      ...formData,
+      description: formData.description || 'No additional description',
       date: `${formatDate(selectedDate)} ${formatTime(selectedTime)}`,
-      images: photos.join(','),
-      status: 'active',
-    });
+     
+      images: formData.images.join(',')
+    };
+    
+    
+    const response = await createItem(finalFormData);
 
-    Alert.alert('Success', 'Lost item reported successfully!', [
-      {
-        text: 'OK',
-        onPress: () => router.replace('/(tabs)/home'),
-      },
-    ]);
+    if(response){
+      setApiCallState(prev => ({ ...prev, success: true, isLoading: false }));
+      Alert.alert('Success', 'Lost item reported successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.replace('/(tabs)/home'),
+        },
+      ]);
+    }
+    
   } catch (error: any) {
     console.error('Submit error:', error);
+    setApiCallState(prev => ({ ...prev, error: error.message, isLoading: false }));
     Alert.alert('Error', 'Failed to submit report. Please try again.');
   }
 };
@@ -192,7 +286,7 @@ export default function ReportLostScreen() {
         <View style={styles.tipContent}>
           <Text style={styles.tipTitle}>Quick Tip</Text>
           <Text style={styles.tipText}>
-            Choose the category that you feel best describes your lost item. You'll be able to add more details in the next step.
+            Choose the category that you feel best describes your lost item. You&apos;ll be able to add more details in the next step.
           </Text>
         </View>
       </View>
@@ -281,9 +375,9 @@ export default function ReportLostScreen() {
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Location/Last Seen</Text>
-          <View style={styles.inputWithIcon}>
+          <View style={styles.locationInputContainer}>
             <TextInput
-              style={styles.inputWithIconText}
+              style={styles.locationInput}
               value={location}
               onChangeText={setLocation}
               placeholder="Phase 2"
@@ -312,85 +406,111 @@ export default function ReportLostScreen() {
     </>
   );
 
-  const renderStep3 = () => (
-    <>
-      <Text style={styles.stepTitle}>Add Photos & Offer Rewards</Text>
-      <Text style={styles.stepSubtitle}>Upload photos</Text>
 
-      <View style={styles.photosSection}>
-        <Text style={styles.label}>Upload/Add Photo</Text>
-        
-        <View style={styles.photosGrid}>
-          {photos.map((photo, index) => (
-            <View key={index} style={styles.photoItem}>
-              <Image source={{ uri: photo }} style={styles.photoImage} />
-              <TouchableOpacity
-                style={styles.removePhotoButton}
-                onPress={() => removePhoto(index)}
-              >
-                <Ionicons name="close-circle" size={24} color="#FF4444" />
-              </TouchableOpacity>
-            </View>
-          ))}
+    const renderStep3 = () => (
+      <>
+        <Text style={styles.stepTitle}>Add Photos & Offer Rewards</Text>
+        <Text style={styles.stepSubtitle}>Upload photos</Text>
+
+        <View style={styles.photosSection}>
+          <Text style={styles.label}>Upload/Add Photo</Text>
           
-          {photos.length < 4 && (
-            <TouchableOpacity style={styles.addPhotoButton} onPress={pickImage}>
-              <Ionicons name="camera-outline" size={32} color={Colors.primary} />
-              <Text style={styles.addPhotoText}>Add Photo</Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.photosGrid}>
+            {photos.map((photo, index) => (
+              <View key={index} style={styles.photoItem}>
+                <Image source={{ uri: photo }} style={styles.photoImage} />
+                {!uploading && (
+                  <TouchableOpacity
+                    style={styles.removePhotoButton}
+                    onPress={() => removePhoto(index)}
+                  >
+                    <Ionicons name="close-circle" size={24} color="#FF4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+            
+            {uploading && (
+              <View style={styles.uploadingOverlay}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={styles.uploadingText}>
+                  Uploading {uploadProgress}%
+                </Text>
+              </View>
+            )}
+            
+            {photos.length < 4 && !uploading && (
+              <TouchableOpacity 
+                style={styles.addPhotoButton} 
+                onPress={pickImage}
+                disabled={uploading}
+              >
+                <Ionicons name="camera-outline" size={32} color={Colors.primary} />
+                <Text style={styles.addPhotoText}>Add Photo</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <Text style={styles.photoHint}>Upload photos of your lost item (up to 4 Photos)</Text>
         </View>
 
-        <Text style={styles.photoHint}>Upload photos of your lost item (up to 4 Photos)</Text>
-      </View>
-
-      <View style={styles.rewardToggle}>
-        <View>
-          <Text style={styles.rewardToggleLabel}>Offer Reward</Text>
-          <Text style={styles.rewardToggleSubtext}>Optional - Offer a reward for finder</Text>
+        <View style={styles.rewardToggle}>
+          <View>
+            <Text style={styles.rewardToggleLabel}>Offer Reward</Text>
+            <Text style={styles.rewardToggleSubtext}>Optional - Offer a reward for finder</Text>
+          </View>
+          <Switch
+            value={offerReward}
+            onValueChange={setOfferReward}
+            trackColor={{ false: '#D0D0D0', true: Colors.primary }}
+            thumbColor={Colors.white}
+            disabled={uploading}
+          />
         </View>
-        <Switch
-          value={offerReward}
-          onValueChange={setOfferReward}
-          trackColor={{ false: '#D0D0D0', true: Colors.primary }}
-          thumbColor={Colors.white}
-        />
-      </View>
 
-      {offerReward && (
-        <View style={styles.rewardSection}>
-          <Text style={styles.label}>Reward Amount</Text>
-          <View style={styles.rewardInput}>
-            <Text style={styles.currencySymbol}>GH₵</Text>
-            <TextInput
-              style={styles.rewardAmount}
-              value={reward}
-              onChangeText={setReward}
-              placeholder="300"
-              keyboardType="numeric"
-            />
+        {offerReward && (
+          <View style={styles.rewardSection}>
+            <Text style={styles.label}>Reward Amount</Text>
+            <View style={styles.rewardInput}>
+              <Text style={styles.currencySymbol}>GH₵</Text>
+              <TextInput
+                style={styles.rewardAmount}
+                value={reward}
+                onChangeText={setReward}
+                placeholder="300"
+                keyboardType="numeric"
+                editable={!uploading}
+              />
+            </View>
+          </View>
+        )}
+
+        <View style={styles.tipBox}>
+          <Ionicons name="bulb-outline" size={20} color={Colors.primary} />
+          <View style={styles.tipContent}>
+            <Text style={styles.tipTitle}>Photo Tips</Text>
+            <Text style={styles.tipText}>
+              {'\u2022'} Take clear and well-lit photos from multiple angles{'\n'}
+              {'\u2022'} Include any unique features that will help in identifying your item{'\n'}
+              {'\u2022'} Verify images are good before submission{'\n'}
+              {'\u2022'} Avoid adding pictures with faces
+            </Text>
           </View>
         </View>
-      )}
 
-      <View style={styles.tipBox}>
-        <Ionicons name="bulb-outline" size={20} color={Colors.primary} />
-        <View style={styles.tipContent}>
-          <Text style={styles.tipTitle}>Photo Tips</Text>
-          <Text style={styles.tipText}>
-            {'\u2022'} Take clear and well-lit photos from multiple angles{'\n'}
-            {'\u2022'} Include any unique features that will help in identifying your item{'\n'}
-            {'\u2022'} Verify images are good before submission{'\n'}
-            {'\u2022'} Avoid adding pictures with faces
-          </Text>
-        </View>
-      </View>
-
-      <TouchableOpacity style={styles.button} onPress={handleContinueStep3}>
-        <Text style={styles.buttonText}>Continue</Text>
-      </TouchableOpacity>
-    </>
-  );
+        <TouchableOpacity 
+          style={[styles.button, uploading && styles.buttonDisabled]} 
+          onPress={handleContinueStep3}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <Text style={styles.buttonText}>Continue</Text>
+          )}
+        </TouchableOpacity>
+      </>
+    );
 
   const renderStep4 = () => (
     <>
@@ -466,8 +586,14 @@ export default function ReportLostScreen() {
         )}
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Submit Report</Text>
+      <TouchableOpacity 
+        style={[styles.button, apiCallState.isLoading && styles.buttonDisabled]} 
+        onPress={handleSubmit}
+        disabled={apiCallState.isLoading}
+      >
+        <Text style={styles.buttonText}>
+          {apiCallState.isLoading ? 'Submitting...' : 'Submit Report'}
+        </Text>
       </TouchableOpacity>
     </>
   );
@@ -648,6 +774,21 @@ const styles = StyleSheet.create({
   inputWithIconText: {
     fontSize: 15,
     color: Colors.textPrimary,
+  },
+  locationInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 15,
+  },
+  locationInput: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.textPrimary,
+    paddingVertical: 12,
   },
   photosSection: {
     marginBottom: 20,
@@ -846,9 +987,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
   buttonText: {
     color: Colors.white,
     fontSize: 16,
+    fontWeight: '600',
+  },
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  
+  uploadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: Colors.primary,
     fontWeight: '600',
   },
 });

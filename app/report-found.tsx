@@ -1,5 +1,3 @@
-// app/report-found.tsx
-
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
@@ -19,7 +17,7 @@ import {
   View,
 } from 'react-native';
 import Colors from '../constants/Colors';
-import { createItem } from '../services/itemsService';
+import { createItem, uploadImage } from '../services/itemsService';
 
 interface Category {
   id: string;
@@ -81,18 +79,25 @@ export default function ReportFoundScreen() {
     }
   };
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 0.8,
-    });
 
-    if (!result.canceled) {
-      const newPhotos = result.assets.map(asset => asset.uri);
-      setPhotos([...photos, ...newPhotos]);
-    }
-  };
+  const pickImage = async () => {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsMultipleSelection: true,
+    quality: 0.8,
+  });
+
+  if (!result.canceled) {
+    const newUris = result.assets.map(asset => asset.uri);
+
+    const uploadedUrls = await Promise.all(newUris.map(uri => uploadImage(uri)));
+
+    const updatedPhotos = [...photos, ...uploadedUrls];
+    setPhotos(updatedPhotos);
+
+    setPhotos([...photos, ...updatedPhotos]);
+  }
+};
 
   const removePhoto = (index: number) => {
     setPhotos(photos.filter((_, i) => i !== index));
@@ -110,9 +115,10 @@ export default function ReportFoundScreen() {
     setStep(step + 1);
   };
 
+
   const handleSubmit = async () => {
   try {
-    await createItem({
+    const response = await createItem({
       type: 'found',
       title: itemName,
       description: description || 'No additional description',
@@ -123,19 +129,22 @@ export default function ReportFoundScreen() {
       status: 'active',
     });
 
-    Alert.alert('Success', 'Found item reported successfully!', [
-      {
-        text: 'OK',
-        onPress: () => router.replace('/(tabs)/home'),
-      },
-    ]);
+    if(response){
+      Alert.alert('Success', 'Found item reported successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.replace('/(tabs)/home'),
+        },
+      ]);
+    }
+
+    
   } catch (error: any) {
     console.error('Submit error:', error);
     Alert.alert('Error', 'Failed to submit report. Please try again.');
   }
 };
 
-  // Step 1: What did you find?
   const renderStep1 = () => (
     <>
       <Text style={styles.stepTitle}>What did you find?</Text>
@@ -178,7 +187,7 @@ export default function ReportFoundScreen() {
         <View style={styles.tipContent}>
           <Text style={styles.tipTitle}>Quick Tip</Text>
           <Text style={styles.tipText}>
-            Choose the category that you feel best describes the item you found. You'll be able to add more details in the next step.
+            Choose the category that you feel best describes the item you found. You&apos;ll be able to add more details in the next step.
           </Text>
         </View>
       </View>
@@ -189,7 +198,6 @@ export default function ReportFoundScreen() {
     </>
   );
 
-  // Step 2: Take photos of the item (was Step 3)
   const renderStep2 = () => (
     <>
       <Text style={styles.stepTitle}>Take photos of the item</Text>
@@ -476,7 +484,7 @@ const renderStep3 = () => (
 
       <Text style={styles.thankYouTitle}>Thank You!! 🎉</Text>
       <Text style={styles.thankYouMessage}>
-        Your report has been submitted. You're helping someone get their item back!
+        Your report has been submitted. You&apos;re helping someone get their item back!
       </Text>
 
       <View style={styles.reportDetails}>

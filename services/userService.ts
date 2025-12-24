@@ -1,4 +1,3 @@
-// services/userService.ts
 
 import { ID, Query } from 'appwrite';
 import { account, DATABASE_ID, databases, USERS_COLLECTION_ID } from '../config/appwrite';
@@ -31,7 +30,7 @@ export const createUserProfile = async (data: Omit<UserProfile, 'userId' | '$id'
         phoneNumber: data.phoneNumber,
         campus: data.campus,
         profileImage: data.profileImage || '',
-        isVerified: data.isVerified || false, // Added
+        isVerified: data.isVerified || false, 
       }
     );
     
@@ -43,9 +42,7 @@ export const createUserProfile = async (data: Omit<UserProfile, 'userId' | '$id'
 };
 
 export const getUserProfile = async (): Promise<UserProfile | null> => {
-  try {
     const user = await account.get();
-    
     const response = await databases.listDocuments(
       DATABASE_ID,
       USERS_COLLECTION_ID,
@@ -59,10 +56,6 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     }
     
     return null;
-  } catch (error) {
-    console.error('Get profile error:', error);
-    throw error;
-  }
 };
 
 export const updateUserProfile = async (data: Partial<UserProfile>) => {

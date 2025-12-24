@@ -1,34 +1,219 @@
-// app/(tabs)/home.tsx
-
+import ItemCard from '@/components/ItemCard';
+import AnimatedItemCardSkeleton from '@/components/ItemCardSkeleton';
+import { getAllItems, getItemsByType, Item } from '@/services/itemsService';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router'; // Add this line
-import React, { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import debounce from 'lodash.debounce';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Keyboard,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import Colors from '../../constants/Colors';
 import { getInitials, getUserProfile } from '../../services/userService';
 
+interface SearchHistory {
+  query: string;
+  timestamp: number;
+}
+
 export default function HomeScreen() {
-    const router = useRouter();
-    const [loading, setLoading] = useState(true);
-    const [userProfile, setUserProfile] = useState<any>(null);
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [items, setItems] = useState<Item[]>([]);
+  const [filteredItems, setFilteredItems] = useState<Item[]>([]);
+  const [activeTab, setActiveTab] = useState<'recent' | 'lost' | 'found'>('recent');
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
+  
+  const searchInputRef = useRef<TextInput>(null);
+  const searchQueryRef = useRef('');
+  const itemsRef = useRef<Item[]>([]);
+  const MAX_HISTORY_ITEMS = 5;
+
+  useEffect(() => {
+    searchQueryRef.current = searchQuery;
+  }, [searchQuery]);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  const loadSearchHistory = async () => {
+    try {
+      const history = await AsyncStorage.getItem('searchHistory');
+      if (history) {
+        setSearchHistory(JSON.parse(history));
+      }
+    } catch (error) {
+      console.error('Failed to load search history:', error);
+    }
+  };
+
+  const saveToSearchHistory = async (query: string) => {
+    if (!query.trim()) return;
+    
+    try {
+      const newHistory: SearchHistory[] = [
+        { query, timestamp: Date.now() },
+        ...searchHistory.filter(item => item.query.toLowerCase() !== query.toLowerCase())
+      ].slice(0, MAX_HISTORY_ITEMS);
+      
+      setSearchHistory(newHistory);
+      await AsyncStorage.setItem('searchHistory', JSON.stringify(newHistory));
+    } catch (error) {
+      console.error('Failed to save search history:', error);
+    }
+  };
+
+  const loadItems = async () => {
+    setLoadingItems(true);
+    try {
+      let data: Item[] = [];
+
+      if (activeTab === 'recent') {
+        data = await getAllItems();
+      } else if (activeTab === 'lost') {
+        data = await getItemsByType('lost');
+      } else {
+        data = await getItemsByType('found');
+      }
+
+      console.log('📥 Loaded items:', data.length);
+      if (data.length > 0) {
+        console.log('Sample item:', {
+          title: data[0].title,
+          category: data[0].category,
+          location: data[0].location,
+          description: data[0].description?.substring(0, 50)
+        });
+      }
+      
+      setItems(data);
+      itemsRef.current = data;
+      setFilteredItems(data);
+      
+      if (searchQueryRef.current) {
+        performSearch(searchQueryRef.current, data);
+      }
+    } catch (error) {
+      console.error('Error loading items:', error);
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
+  const performSearch = (query: string, itemsToSearch: Item[]) => {
+    if (!query.trim()) {
+      setFilteredItems(itemsToSearch);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    const lowerQuery = query.toLowerCase().trim();
+    
+    const results = itemsToSearch.filter(item => {
+      const matchesTitle = item.title?.toLowerCase().includes(lowerQuery) || false;
+      const matchesCategory = item.category?.toLowerCase().includes(lowerQuery) || false;
+      const matchesLocation = item.location?.toLowerCase().includes(lowerQuery) || false;
+      const matchesDescription = item.description?.toLowerCase().includes(lowerQuery) || false;
+      
+      return matchesTitle || matchesCategory || matchesLocation || matchesDescription;
+    });
+
+    console.log('✅ Search results:', results.length);
+    setFilteredItems(results);
+    
+    if (results.length > 0) {
+      saveToSearchHistory(query);
+    }
+  };
+
+  const searchItems = useCallback((query: string) => {
+    performSearch(query, itemsRef.current);
+  }, []);
+
+  const debouncedSearch = useRef(
+    debounce((query: string) => {
+      searchItems(query);
+    }, 300)
+  ).current;
+
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    setShowHistory(text.length > 0);
+    debouncedSearch(text);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    searchQueryRef.current = '';
+    setFilteredItems(itemsRef.current);
+    setIsSearching(false);
+    setShowHistory(false);
+    Keyboard.dismiss();
+  };
+
+  const focusSearch = () => {
+    searchInputRef.current?.focus();
+    if (searchQuery) {
+      setShowHistory(true);
+    }
+  };
+
+  const selectHistoryItem = (query: string) => {
+    setSearchQuery(query);
+    searchQueryRef.current = query;
+    performSearch(query, itemsRef.current);
+    setShowHistory(false);
+    Keyboard.dismiss();
+  };
+
+  const clearHistory = async () => {
+    try {
+      setSearchHistory([]);
+      await AsyncStorage.removeItem('searchHistory');
+    } catch (error) {
+      console.error('Failed to clear history:', error);
+    }
+  };
 
   useEffect(() => {
     loadUserProfile();
+    loadSearchHistory();
   }, []);
 
+  useEffect(() => {
+    loadItems();
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (!searchQuery) {
+      setFilteredItems(items);
+    }
+  }, [items]);
+
   const loadUserProfile = async () => {
+    setLoading(true);
     try {
       const profile = await getUserProfile();
-      setUserProfile(profile);
+      if(profile){
+        setUserProfile(profile);
+      }
     } catch (error) {
       console.error('Load profile error:', error);
     } finally {
@@ -50,7 +235,6 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
       
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           {userProfile?.profileImage ? (
@@ -81,17 +265,89 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color={Colors.textLight} />
-        <Text style={styles.searchPlaceholder}>Search for lost item</Text>
-        <TouchableOpacity>
-          <Ionicons name="options-outline" size={20} color={Colors.textLight} />
+      <View style={styles.searchWrapper}>
+        <TouchableOpacity 
+          style={styles.searchContainer}
+          activeOpacity={0.9}
+          onPress={focusSearch}
+        >
+          <Ionicons name="search" size={20} color={Colors.textLight} />
+          <TextInput
+            ref={searchInputRef}
+            style={styles.searchInput}
+            placeholder="Search by title, category, or location"
+            placeholderTextColor={Colors.textLight}
+            value={searchQuery}
+            onChangeText={handleSearchChange}
+            onFocus={() => searchQuery && setShowHistory(true)}
+            onBlur={() => setTimeout(() => setShowHistory(false), 200)}
+            returnKeyType="search"
+            onSubmitEditing={() => {
+              performSearch(searchQuery, itemsRef.current);
+              setShowHistory(false);
+            }}
+          />
+          {searchQuery ? (
+            <TouchableOpacity onPress={clearSearch}>
+              <Ionicons name="close-circle" size={20} color={Colors.textLight} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => setShowHistory(!showHistory)}>
+              <Ionicons name="time-outline" size={20} color={Colors.textLight} />
+            </TouchableOpacity>
+          )}
         </TouchableOpacity>
+
+        {showHistory && searchHistory.length > 0 && (
+          <View style={styles.historyDropdown}>
+            <View style={styles.historyHeader}>
+              <Text style={styles.historyTitle}>Recent Searches</Text>
+              <TouchableOpacity onPress={clearHistory}>
+                <Text style={styles.clearHistoryText}>Clear All</Text>
+              </TouchableOpacity>
+            </View>
+            {searchHistory.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.historyItem}
+                onPress={() => selectHistoryItem(item.query)}
+              >
+                <Ionicons name="time-outline" size={16} color={Colors.textLight} />
+                <Text style={styles.historyQuery}>{item.query}</Text>
+                <TouchableOpacity 
+                  style={styles.historyDelete}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    const newHistory = searchHistory.filter((_, i) => i !== index);
+                    setSearchHistory(newHistory);
+                    AsyncStorage.setItem('searchHistory', JSON.stringify(newHistory));
+                  }}
+                >
+                  <Ionicons name="close" size={14} color={Colors.textLight} />
+                </TouchableOpacity>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
-      {/* Report Buttons */}
-        <View style={styles.reportButtons}>
+      {isSearching && searchQuery && (
+        <View style={styles.searchResultsHeader}>
+          <Text style={styles.searchResultsText}>
+            {filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''} found
+          </Text>
+          {searchQuery && (
+            <Text style={styles.searchQueryText}>
+              for &quot;{searchQuery}&quot;
+            </Text>
+          )}
+          <TouchableOpacity onPress={clearSearch} style={styles.clearSearchButton}>
+            <Text style={styles.clearSearchText}>Clear</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <View style={styles.reportButtons}>
         <TouchableOpacity 
             style={styles.reportButton}
             onPress={() => router.push('/report-lost')}
@@ -115,27 +371,101 @@ export default function HomeScreen() {
         </TouchableOpacity>
         </View>
 
-      {/* Categories/Tabs */}
       <View style={styles.tabsContainer}>
-        <TouchableOpacity style={[styles.tab, styles.tabActive]}>
-          <Text style={[styles.tabText, styles.tabTextActive]}>Recent Posts</Text>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'recent' && styles.tabActive]}
+          onPress={() => setActiveTab('recent')}
+        >
+          <Text style={[styles.tabText, activeTab === 'recent' && styles.tabTextActive]}>
+            Recent Posts
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tab}>
-          <Text style={styles.tabText}>Lost</Text>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'lost' && styles.tabActive]}
+          onPress={() => setActiveTab('lost')}
+        >
+          <Text style={[styles.tabText, activeTab === 'lost' && styles.tabTextActive]}>
+            Lost
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'found' && styles.tabActive]}
+          onPress={() => setActiveTab('found')}
+        >
+          <Text style={[styles.tabText, activeTab === 'found' && styles.tabTextActive]}>
+            Found
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Content */}
-      <ScrollView style={styles.content}>
-        <View style={styles.emptyState}>
-          <Ionicons name="search-outline" size={64} color={Colors.textLight} />
-          <Text style={styles.emptyText}>No items found</Text>
-          <Text style={styles.emptySubtext}>Lost items will appear here</Text>
-        </View>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {loadingItems ? (
+           <>
+            <AnimatedItemCardSkeleton />
+            <AnimatedItemCardSkeleton />
+            <AnimatedItemCardSkeleton />
+            <AnimatedItemCardSkeleton />
+          </>
+        ) : filteredItems.length === 0 ? (
+          <View style={styles.emptyState}>
+            {searchQuery ? (
+              <>
+                <Ionicons name="search-outline" size={64} color={Colors.textLight} />
+                <Text style={styles.emptyText}>No results found</Text>
+                <Text style={styles.emptySubtext}>
+                  No items match &quot;{searchQuery}&quot;
+                </Text>
+                {searchHistory.length > 0 && (
+                  <View style={styles.suggestions}>
+                    <Text style={styles.suggestionsTitle}>Try searching for:</Text>
+                    {searchHistory.slice(0, 3).map((item, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.suggestionItem}
+                        onPress={() => selectHistoryItem(item.query)}
+                      >
+                        <Text style={styles.suggestionText}>{item.query}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                <TouchableOpacity 
+                  style={styles.clearSearchButtonLarge}
+                  onPress={clearSearch}
+                >
+                  <Text style={styles.clearSearchTextLarge}>Clear Search</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Ionicons name="search-outline" size={64} color={Colors.textLight} />
+                <Text style={styles.emptyText}>No items found</Text>
+                <Text style={styles.emptySubtext}>Lost items will appear here</Text>
+              </>
+            )}
+          </View>
+        ) : (
+          filteredItems.map((item) => (
+            <ItemCard
+              key={item.$id}
+              item={item}
+              onPress={() =>
+                router.push({
+                  pathname: '/item/[id]',
+                  params: { id: item?.$id },
+                })
+              }
+              highlightText={searchQuery}
+            />
+          ))
+        )}
       </ScrollView>
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   loadingContainer: {
@@ -201,12 +531,16 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#FF4444',
   },
+  searchWrapper: {
+    position: 'relative',
+    marginHorizontal: 20,
+    marginTop: 15,
+    zIndex: 1000,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.white,
-    marginHorizontal: 20,
-    marginTop: 15,
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderRadius: 10,
@@ -214,10 +548,95 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  searchPlaceholder: {
+  searchInput: {
     flex: 1,
     fontSize: 16,
+    color: Colors.textPrimary,
+    padding: 0,
+    margin: 0,
+  },
+  historyDropdown: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: Colors.white,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginTop: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 1001,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  historyTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  clearHistoryText: {
+    fontSize: 12,
     color: Colors.textLight,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  historyQuery: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
+  historyDelete: {
+    padding: 4,
+  },
+  searchResultsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  searchResultsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  searchQueryText: {
+    fontSize: 12,
+    color: Colors.textLight,
+    fontStyle: 'italic',
+    flex: 1,
+    marginLeft: 8,
+  },
+  clearSearchButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: Colors.border,
+    borderRadius: 12,
+  },
+  clearSearchText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '600',
   },
   reportButtons: {
     flexDirection: 'row',
@@ -287,6 +706,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
+  loader: {
+    marginTop: 20,
+  },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -302,5 +724,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textLight,
     marginTop: 5,
+    textAlign: 'center',
+  },
+  suggestions: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  suggestionsTitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 10,
+  },
+  suggestionItem: {
+    backgroundColor: Colors.border,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginVertical: 4,
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
+  clearSearchButtonLarge: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+  },
+  clearSearchTextLarge: {
+    fontSize: 14,
+    color: Colors.white,
+    fontWeight: '600',
   },
 });
