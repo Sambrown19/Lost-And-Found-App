@@ -91,16 +91,6 @@ export default function HomeScreen() {
       } else {
         data = await getItemsByType('found');
       }
-
-      console.log('📥 Loaded items:', data.length);
-      if (data.length > 0) {
-        console.log('Sample item:', {
-          title: data[0].title,
-          category: data[0].category,
-          location: data[0].location,
-          description: data[0].description?.substring(0, 50)
-        });
-      }
       
       setItems(data);
       itemsRef.current = data;
@@ -135,7 +125,6 @@ export default function HomeScreen() {
       return matchesTitle || matchesCategory || matchesLocation || matchesDescription;
     });
 
-    console.log('✅ Search results:', results.length);
     setFilteredItems(results);
     
     if (results.length > 0) {

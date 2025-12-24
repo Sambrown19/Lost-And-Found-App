@@ -101,7 +101,6 @@ export const getUserItems = async () => {
 export const uploadImage = async (uri: string) => {
   try {
     const fileId = ID.unique();
-    console.log('Generated fileId:', fileId);
     
     const filename = uri.split('/').pop() || `image-${Date.now()}.jpg`;
     
@@ -130,11 +129,8 @@ export const uploadImage = async (uri: string) => {
       name: filename,
       type: mimeType,
     } as any);
-    
-    
 
     const uploadUrl = `${ENDPOINT}/storage/buckets/${STORAGE_BUCKET_ID}/files`;
-    console.log('Upload URL:', uploadUrl);
     
     const response = await fetch(uploadUrl, {
       method: 'POST',
@@ -144,7 +140,6 @@ export const uploadImage = async (uri: string) => {
       body: formData,
     });
     
-    console.log('Response status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();

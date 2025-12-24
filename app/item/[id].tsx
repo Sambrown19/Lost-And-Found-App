@@ -21,7 +21,7 @@ import Colors from '../../constants/Colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const IMAGE_HEIGHT = 260;
-const AUTO_SCROLL_INTERVAL = 5000; // 5 seconds
+const AUTO_SCROLL_INTERVAL = 5000;
 
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,7 +33,7 @@ export default function ItemDetailScreen() {
   
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
-  const autoScrollTimer = useRef<NodeJS.Timeout>();
+  const autoScrollTimer = useRef<NodeJS.Timeout>(null);
 
   useEffect(() => {
     fetchItem();
@@ -45,7 +45,7 @@ export default function ItemDetailScreen() {
   }, []);
 
   useEffect(() => {
-    if (item?.imagesArray && item.imagesArray.length > 1) {
+    if (item?.imagesArray && item?.imagesArray?.length > 1) {
       startAutoScroll();
     }
     return () => {
@@ -62,9 +62,8 @@ export default function ItemDetailScreen() {
         ITEMS_COLLECTION_ID,
         id!
       );
-      const itemData = res as Item;
+      const itemData = res;
       
-      // Convert images string to array if needed
       if (itemData.images && typeof itemData.images === 'string') {
         itemData.imagesArray = itemData.images.split(',').filter(url => url.trim());
       } else if (Array.isArray(itemData.images)) {
@@ -82,10 +81,10 @@ export default function ItemDetailScreen() {
   };
 
   const startAutoScroll = () => {
-    if (!item?.imagesArray || item.imagesArray.length <= 1) return;
+    if (!item.imagesArray || item?.imagesArray?.length <= 1) return;
     
     autoScrollTimer.current = setInterval(() => {
-      const nextIndex = (currentIndex + 1) % item.imagesArray.length;
+      const nextIndex = (currentIndex + 1) % item?.imagesArray?.length;
       setCurrentIndex(nextIndex);
       
       flatListRef.current?.scrollToOffset({
@@ -99,12 +98,11 @@ export default function ItemDetailScreen() {
     [{ nativeEvent: { contentOffset: { x: scrollX } } }],
     {
       useNativeDriver: false,
-      listener: (event) => {
+      listener: (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
         const index = Math.round(offsetX / SCREEN_WIDTH);
         setCurrentIndex(index);
         
-        // Reset auto-scroll timer on manual drag
         if (autoScrollTimer.current) {
           clearInterval(autoScrollTimer.current);
         }
