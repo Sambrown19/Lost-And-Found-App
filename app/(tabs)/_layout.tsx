@@ -29,7 +29,7 @@ export default function TabLayout() {
         name="home"
         options={{
           title: 'Home',
-         tabBarIcon: ({ focused }) => (
+          tabBarIcon: ({ focused }) => (
             <Image
               source={require('../../assets/images/home-01.png')}
               style={{
@@ -39,6 +39,7 @@ export default function TabLayout() {
               }}
             />
           ),
+          headerShown: false,
         }}
       />
       <Tabs.Screen
