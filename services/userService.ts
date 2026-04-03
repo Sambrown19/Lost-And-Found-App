@@ -1,5 +1,5 @@
 
-import { ID, Query } from 'appwrite';
+import { ID, Query } from 'react-native-appwrite';
 import { account, DATABASE_ID, databases, USERS_COLLECTION_ID } from '../config/appwrite';
 
 export interface UserProfile {

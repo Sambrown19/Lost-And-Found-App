@@ -7,10 +7,13 @@ import Colors from '../constants/Colors';
 interface Props {
   item: Item;
   onPress?: () => void;
+  highlightText?: string;
 }
 
 export default function ItemCard({ item, onPress }: Props) {
   const statusColor = item.type === 'lost' ? '#FF4444' : '#4CAF50';
+
+  console.log('Item images value:', item.images);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>

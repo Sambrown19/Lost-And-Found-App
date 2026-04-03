@@ -1,20 +1,20 @@
 // app/(auth)/signup.tsx
 
 import { Ionicons } from '@expo/vector-icons';
-import { ID } from 'appwrite';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import { ID } from 'react-native-appwrite';
 import { account } from '../../config/appwrite';
 import Colors from '../../constants/Colors';
 

@@ -1,5 +1,5 @@
-import { ID, Query } from 'appwrite';
-import { account, DATABASE_ID, databases, ENDPOINT, ITEMS_COLLECTION_ID, PROJECT_ID, STORAGE_BUCKET_ID, USERS_COLLECTION_ID } from '../config/appwrite';
+import { ID, Query } from 'react-native-appwrite';
+import { account, DATABASE_ID, databases, ITEMS_COLLECTION_ID, storage, STORAGE_BUCKET_ID, USERS_COLLECTION_ID } from '../config/appwrite';
 export interface Item {
   $id?: string;
   userId: string;
@@ -98,59 +98,28 @@ export const getUserItems = async () => {
 };
 
 
-export const uploadImage = async (uri: string) => {
+export const uploadImage = async (uri: string): Promise<string> => {
   try {
     const fileId = ID.unique();
-    
     const filename = uri.split('/').pop() || `image-${Date.now()}.jpg`;
-    
-    const getMimeType = (filename: string): string => {
-      const ext = filename.split('.').pop()?.toLowerCase() || '';
-      const mimeTypes: Record<string, string> = {
-        jpg: 'image/jpeg',
-        jpeg: 'image/jpeg',
-        png: 'image/png',
-        heic: 'image/heic',
-        heif: 'image/heif',
-        gif: 'image/gif',
-        webp: 'image/webp',
-      };
-      return mimeTypes[ext] || 'image/jpeg';
-    };
-    
-    const mimeType = getMimeType(filename);
-    
-    const formData = new FormData();
-    
-    formData.append('fileId', fileId);
-    
-    formData.append('file', {
-      uri: uri,
-      name: filename,
-      type: mimeType,
-    } as any);
 
-    const uploadUrl = `${ENDPOINT}/storage/buckets/${STORAGE_BUCKET_ID}/files`;
-    
-    const response = await fetch(uploadUrl, {
-      method: 'POST',
-      headers: {
-        'X-Appwrite-Project': PROJECT_ID,
-      },
-      body: formData,
-    });
-    
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-    }
-    
-    const data = await response.json();
-    
-    return `${ENDPOINT}/storage/buckets/${STORAGE_BUCKET_ID}/files/${data.$id}/view?project=${PROJECT_ID}`;
-    
+    await storage.createFile(
+      STORAGE_BUCKET_ID,
+      fileId,
+      {
+        uri,
+        name: filename,
+        type: 'image/jpeg',
+        size: 0,
+      }
+    );
+
+    return storage.getFileView(STORAGE_BUCKET_ID, fileId).toString();
+
   } catch (error: any) {
+    console.error('Single image upload failed:', error);
     throw new Error(`Upload failed: ${error.message}`);
   }
 };
+    
+   

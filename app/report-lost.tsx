@@ -70,7 +70,7 @@ const [formData, setFormData] = useState({
   location: '',
   date: '',
   images: [] as string[],
-  status: 'active',
+  status: 'active' as 'active' | 'claimed' | 'resolved',
 });
 
 

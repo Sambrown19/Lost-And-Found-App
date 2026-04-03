@@ -85,16 +85,17 @@ export default function HomeScreen() {
       let data: Item[] = [];
 
       if (activeTab === 'recent') {
-        data = await getAllItems();
-      } else if (activeTab === 'lost') {
-        data = await getItemsByType('lost');
-      } else {
-        data = await getItemsByType('found');
-      }
+  data = await getAllItems() as unknown as Item[];
+} else if (activeTab === 'lost') {
+  data = await getItemsByType('lost') as unknown as Item[];
+} else {
+  data = await getItemsByType('found') as unknown as Item[];
+}
       
-      setItems(data);
-      itemsRef.current = data;
-      setFilteredItems(data);
+     setItems(data);
+console.log('First item images:', data[0]?.images);
+itemsRef.current = data;
+setFilteredItems(data);
       
       if (searchQueryRef.current) {
         performSearch(searchQueryRef.current, data);
@@ -443,7 +444,7 @@ export default function HomeScreen() {
               onPress={() =>
                 router.push({
                   pathname: '/item/[id]',
-                  params: { id: item?.$id },
+                  params: { id: item?.$id ?? '', },
                 })
               }
               highlightText={searchQuery}
