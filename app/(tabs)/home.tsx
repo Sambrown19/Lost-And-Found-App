@@ -1,13 +1,13 @@
-import ItemCard from '@/components/ItemCard';
-import AnimatedItemCardSkeleton from '@/components/ItemCardSkeleton';
-import { getAllItems, getItemsByType, Item } from '@/services/itemsService';
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import debounce from 'lodash.debounce';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import ItemCard from "@/components/ItemCard";
+import ItemCardSkeleton from "@/components/ItemCardSkeleton";
+import HomeScreenSkeleton from "@/components/loader/HomeScreenSkeleton";
+import { getAllItems, getItemsByType, Item } from "@/services/itemsService";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import debounce from "lodash.debounce";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Image,
   Keyboard,
   ScrollView,
@@ -17,9 +17,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import Colors from '../../constants/Colors';
-import { getInitials, getUserProfile } from '../../services/userService';
+} from "react-native";
+import Colors from "../../constants/Colors";
+import { getInitials, getUserProfile } from "../../services/userService";
 
 interface SearchHistory {
   query: string;
@@ -32,15 +32,18 @@ export default function HomeScreen() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
-  const [activeTab, setActiveTab] = useState<'recent' | 'lost' | 'found'>('recent');
+  const [activeTab, setActiveTab] = useState<"recent" | "lost" | "found">(
+    "recent",
+  );
   const [loadingItems, setLoadingItems] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
-  
+  const [initialLoading, setInitialLoading] = useState(true);
+
   const searchInputRef = useRef<TextInput>(null);
-  const searchQueryRef = useRef('');
+  const searchQueryRef = useRef("");
   const itemsRef = useRef<Item[]>([]);
   const MAX_HISTORY_ITEMS = 5;
 
@@ -54,28 +57,30 @@ export default function HomeScreen() {
 
   const loadSearchHistory = async () => {
     try {
-      const history = await AsyncStorage.getItem('searchHistory');
+      const history = await AsyncStorage.getItem("searchHistory");
       if (history) {
         setSearchHistory(JSON.parse(history));
       }
     } catch (error) {
-      console.error('Failed to load search history:', error);
+      console.error("Failed to load search history:", error);
     }
   };
 
   const saveToSearchHistory = async (query: string) => {
     if (!query.trim()) return;
-    
+
     try {
       const newHistory: SearchHistory[] = [
         { query, timestamp: Date.now() },
-        ...searchHistory.filter(item => item.query.toLowerCase() !== query.toLowerCase())
+        ...searchHistory.filter(
+          (item) => item.query.toLowerCase() !== query.toLowerCase(),
+        ),
       ].slice(0, MAX_HISTORY_ITEMS);
-      
+
       setSearchHistory(newHistory);
-      await AsyncStorage.setItem('searchHistory', JSON.stringify(newHistory));
+      await AsyncStorage.setItem("searchHistory", JSON.stringify(newHistory));
     } catch (error) {
-      console.error('Failed to save search history:', error);
+      console.error("Failed to save search history:", error);
     }
   };
 
@@ -84,26 +89,27 @@ export default function HomeScreen() {
     try {
       let data: Item[] = [];
 
-      if (activeTab === 'recent') {
-  data = await getAllItems() as unknown as Item[];
-} else if (activeTab === 'lost') {
-  data = await getItemsByType('lost') as unknown as Item[];
-} else {
-  data = await getItemsByType('found') as unknown as Item[];
-}
-      
-     setItems(data);
-console.log('First item images:', data[0]?.images);
-itemsRef.current = data;
-setFilteredItems(data);
-      
+      if (activeTab === "recent") {
+        data = (await getAllItems()) as unknown as Item[];
+      } else if (activeTab === "lost") {
+        data = (await getItemsByType("lost")) as unknown as Item[];
+      } else {
+        data = (await getItemsByType("found")) as unknown as Item[];
+      }
+
+      setItems(data);
+      console.log("First item images:", data[0]?.images);
+      itemsRef.current = data;
+      setFilteredItems(data);
+
       if (searchQueryRef.current) {
         performSearch(searchQueryRef.current, data);
       }
     } catch (error) {
-      console.error('Error loading items:', error);
+      console.error("Error loading items:", error);
     } finally {
       setLoadingItems(false);
+      setInitialLoading(false);
     }
   };
 
@@ -116,18 +122,24 @@ setFilteredItems(data);
 
     setIsSearching(true);
     const lowerQuery = query.toLowerCase().trim();
-    
-    const results = itemsToSearch.filter(item => {
-      const matchesTitle = item.title?.toLowerCase().includes(lowerQuery) || false;
-      const matchesCategory = item.category?.toLowerCase().includes(lowerQuery) || false;
-      const matchesLocation = item.location?.toLowerCase().includes(lowerQuery) || false;
-      const matchesDescription = item.description?.toLowerCase().includes(lowerQuery) || false;
-      
-      return matchesTitle || matchesCategory || matchesLocation || matchesDescription;
+
+    const results = itemsToSearch.filter((item) => {
+      const matchesTitle =
+        item.title?.toLowerCase().includes(lowerQuery) || false;
+      const matchesCategory =
+        item.category?.toLowerCase().includes(lowerQuery) || false;
+      const matchesLocation =
+        item.location?.toLowerCase().includes(lowerQuery) || false;
+      const matchesDescription =
+        item.description?.toLowerCase().includes(lowerQuery) || false;
+
+      return (
+        matchesTitle || matchesCategory || matchesLocation || matchesDescription
+      );
     });
 
     setFilteredItems(results);
-    
+
     if (results.length > 0) {
       saveToSearchHistory(query);
     }
@@ -140,7 +152,7 @@ setFilteredItems(data);
   const debouncedSearch = useRef(
     debounce((query: string) => {
       searchItems(query);
-    }, 300)
+    }, 300),
   ).current;
 
   const handleSearchChange = (text: string) => {
@@ -150,8 +162,8 @@ setFilteredItems(data);
   };
 
   const clearSearch = () => {
-    setSearchQuery('');
-    searchQueryRef.current = '';
+    setSearchQuery("");
+    searchQueryRef.current = "";
     setFilteredItems(itemsRef.current);
     setIsSearching(false);
     setShowHistory(false);
@@ -176,9 +188,9 @@ setFilteredItems(data);
   const clearHistory = async () => {
     try {
       setSearchHistory([]);
-      await AsyncStorage.removeItem('searchHistory');
+      await AsyncStorage.removeItem("searchHistory");
     } catch (error) {
-      console.error('Failed to clear history:', error);
+      console.error("Failed to clear history:", error);
     }
   };
 
@@ -195,36 +207,33 @@ setFilteredItems(data);
     if (!searchQuery) {
       setFilteredItems(items);
     }
-  }, [items]);
+  }, [items, searchQuery]);
 
   const loadUserProfile = async () => {
     setLoading(true);
     try {
       const profile = await getUserProfile();
-      if(profile){
+      if (profile) {
         setUserProfile(profile);
       }
     } catch (error) {
-      console.error('Load profile error:', error);
+      console.error("Load profile error:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
+  // Show full screen skeleton on initial load
+  if (initialLoading) {
+    return <HomeScreenSkeleton />;
   }
 
-  const firstName = userProfile?.fullName?.split(' ')[0] || 'User';
+  const firstName = userProfile?.fullName?.split(" ")[0] || "User";
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
-      
+
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           {userProfile?.profileImage ? (
@@ -235,28 +244,34 @@ setFilteredItems(data);
           ) : (
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {getInitials(userProfile?.fullName || '')}
+                {getInitials(userProfile?.fullName || "")}
               </Text>
             </View>
           )}
           <View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
-                {userProfile?.isVerified && (
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            >
+              <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
+              {userProfile?.isVerified && (
                 <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-                )}
+              )}
             </View>
             <Text style={styles.subGreeting}>Find your lost items</Text>
-            </View>
+          </View>
         </View>
         <TouchableOpacity style={styles.notificationButton}>
-          <Ionicons name="notifications-outline" size={24} color={Colors.textPrimary} />
+          <Ionicons
+            name="notifications-outline"
+            size={24}
+            color={Colors.textPrimary}
+          />
           <View style={styles.notificationBadge} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.searchWrapper}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.searchContainer}
           activeOpacity={0.9}
           onPress={focusSearch}
@@ -279,11 +294,19 @@ setFilteredItems(data);
           />
           {searchQuery ? (
             <TouchableOpacity onPress={clearSearch}>
-              <Ionicons name="close-circle" size={20} color={Colors.textLight} />
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={Colors.textLight}
+              />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={() => setShowHistory(!showHistory)}>
-              <Ionicons name="time-outline" size={20} color={Colors.textLight} />
+              <Ionicons
+                name="time-outline"
+                size={20}
+                color={Colors.textLight}
+              />
             </TouchableOpacity>
           )}
         </TouchableOpacity>
@@ -302,15 +325,24 @@ setFilteredItems(data);
                 style={styles.historyItem}
                 onPress={() => selectHistoryItem(item.query)}
               >
-                <Ionicons name="time-outline" size={16} color={Colors.textLight} />
+                <Ionicons
+                  name="time-outline"
+                  size={16}
+                  color={Colors.textLight}
+                />
                 <Text style={styles.historyQuery}>{item.query}</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.historyDelete}
                   onPress={(e) => {
                     e.stopPropagation();
-                    const newHistory = searchHistory.filter((_, i) => i !== index);
+                    const newHistory = searchHistory.filter(
+                      (_, i) => i !== index,
+                    );
                     setSearchHistory(newHistory);
-                    AsyncStorage.setItem('searchHistory', JSON.stringify(newHistory));
+                    AsyncStorage.setItem(
+                      "searchHistory",
+                      JSON.stringify(newHistory),
+                    );
                   }}
                 >
                   <Ionicons name="close" size={14} color={Colors.textLight} />
@@ -324,67 +356,99 @@ setFilteredItems(data);
       {isSearching && searchQuery && (
         <View style={styles.searchResultsHeader}>
           <Text style={styles.searchResultsText}>
-            {filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''} found
+            {filteredItems.length} result{filteredItems.length !== 1 ? "s" : ""}{" "}
+            found
           </Text>
           {searchQuery && (
             <Text style={styles.searchQueryText}>
               for &quot;{searchQuery}&quot;
             </Text>
           )}
-          <TouchableOpacity onPress={clearSearch} style={styles.clearSearchButton}>
+          <TouchableOpacity
+            onPress={clearSearch}
+            style={styles.clearSearchButton}
+          >
             <Text style={styles.clearSearchText}>Clear</Text>
           </TouchableOpacity>
         </View>
       )}
 
       <View style={styles.reportButtons}>
-        <TouchableOpacity 
-            style={styles.reportButton}
-            onPress={() => router.push('/report-lost')}
+        <TouchableOpacity
+          style={styles.reportButton}
+          onPress={() => router.push("/report-lost")}
         >
-            <View style={styles.reportIconContainer}>
-            <Ionicons name="alert-circle-outline" size={24} color={Colors.primary} />
-            </View>
-            <Text style={styles.reportButtonText}>Report Lost</Text>
-            <Text style={styles.reportButtonSubtext}>Lost something?</Text>
+          <View style={styles.reportIconContainer}>
+            <Ionicons
+              name="alert-circle-outline"
+              size={24}
+              color={Colors.primary}
+            />
+          </View>
+          <Text style={styles.reportButtonText}>Report Lost</Text>
+          <Text style={styles.reportButtonSubtext}>Lost something?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-            style={[styles.reportButton, styles.reportFoundButton]}
-            onPress={() => router.push('/report-found')}
+        <TouchableOpacity
+          style={[styles.reportButton, styles.reportFoundButton]}
+          onPress={() => router.push("/report-found")}
         >
-            <View style={[styles.reportIconContainer, styles.reportFoundIconContainer]}>
-            <Ionicons name="checkmark-circle-outline" size={24} color="#4CAF50" />
-            </View>
-            <Text style={styles.reportButtonText}>Report Found</Text>
-            <Text style={styles.reportButtonSubtext}>Found something?</Text>
+          <View
+            style={[
+              styles.reportIconContainer,
+              styles.reportFoundIconContainer,
+            ]}
+          >
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={24}
+              color="#4CAF50"
+            />
+          </View>
+          <Text style={styles.reportButtonText}>Report Found</Text>
+          <Text style={styles.reportButtonSubtext}>Found something?</Text>
         </TouchableOpacity>
-        </View>
+      </View>
 
       <View style={styles.tabsContainer}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'recent' && styles.tabActive]}
-          onPress={() => setActiveTab('recent')}
+          style={[styles.tab, activeTab === "recent" && styles.tabActive]}
+          onPress={() => setActiveTab("recent")}
         >
-          <Text style={[styles.tabText, activeTab === 'recent' && styles.tabTextActive]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "recent" && styles.tabTextActive,
+            ]}
+          >
             Recent Posts
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'lost' && styles.tabActive]}
-          onPress={() => setActiveTab('lost')}
+          style={[styles.tab, activeTab === "lost" && styles.tabActive]}
+          onPress={() => setActiveTab("lost")}
         >
-          <Text style={[styles.tabText, activeTab === 'lost' && styles.tabTextActive]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "lost" && styles.tabTextActive,
+            ]}
+          >
             Lost
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'found' && styles.tabActive]}
-          onPress={() => setActiveTab('found')}
+          style={[styles.tab, activeTab === "found" && styles.tabActive]}
+          onPress={() => setActiveTab("found")}
         >
-          <Text style={[styles.tabText, activeTab === 'found' && styles.tabTextActive]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "found" && styles.tabTextActive,
+            ]}
+          >
             Found
           </Text>
         </TouchableOpacity>
@@ -392,24 +456,31 @@ setFilteredItems(data);
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {loadingItems ? (
-           <>
-            <AnimatedItemCardSkeleton />
-            <AnimatedItemCardSkeleton />
-            <AnimatedItemCardSkeleton />
-            <AnimatedItemCardSkeleton />
+          // Show item card skeletons while loading
+          <>
+            <ItemCardSkeleton />
+            <ItemCardSkeleton />
+            <ItemCardSkeleton />
+            <ItemCardSkeleton />
           </>
         ) : filteredItems.length === 0 ? (
           <View style={styles.emptyState}>
             {searchQuery ? (
               <>
-                <Ionicons name="search-outline" size={64} color={Colors.textLight} />
+                <Ionicons
+                  name="search-outline"
+                  size={64}
+                  color={Colors.textLight}
+                />
                 <Text style={styles.emptyText}>No results found</Text>
                 <Text style={styles.emptySubtext}>
                   No items match &quot;{searchQuery}&quot;
                 </Text>
                 {searchHistory.length > 0 && (
                   <View style={styles.suggestions}>
-                    <Text style={styles.suggestionsTitle}>Try searching for:</Text>
+                    <Text style={styles.suggestionsTitle}>
+                      Try searching for:
+                    </Text>
                     {searchHistory.slice(0, 3).map((item, index) => (
                       <TouchableOpacity
                         key={index}
@@ -421,7 +492,7 @@ setFilteredItems(data);
                     ))}
                   </View>
                 )}
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.clearSearchButtonLarge}
                   onPress={clearSearch}
                 >
@@ -430,25 +501,21 @@ setFilteredItems(data);
               </>
             ) : (
               <>
-                <Ionicons name="search-outline" size={64} color={Colors.textLight} />
+                <Ionicons
+                  name="search-outline"
+                  size={64}
+                  color={Colors.textLight}
+                />
                 <Text style={styles.emptyText}>No items found</Text>
-                <Text style={styles.emptySubtext}>Lost items will appear here</Text>
+                <Text style={styles.emptySubtext}>
+                  Lost items will appear here
+                </Text>
               </>
             )}
           </View>
         ) : (
           filteredItems.map((item) => (
-            <ItemCard
-              key={item.$id}
-              item={item}
-              onPress={() =>
-                router.push({
-                  pathname: '/item/[id]',
-                  params: { id: item?.$id ?? '', },
-                })
-              }
-              highlightText={searchQuery}
-            />
+            <ItemCard key={item.$id} item={item} highlightText={searchQuery} />
           ))
         )}
       </ScrollView>
@@ -456,12 +523,11 @@ setFilteredItems(data);
   );
 }
 
-
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: Colors.background,
   },
   container: {
@@ -469,17 +535,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 20,
     backgroundColor: Colors.white,
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   avatar: {
@@ -487,17 +553,17 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   avatarText: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.white,
   },
   greeting: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
   },
   subGreeting: {
@@ -508,28 +574,28 @@ const styles = StyleSheet.create({
   notificationButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
   },
   notificationBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: 8,
     right: 8,
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FF4444',
+    backgroundColor: "#FF4444",
   },
   searchWrapper: {
-    position: 'relative',
+    position: "relative",
     marginHorizontal: 20,
     marginTop: 15,
     zIndex: 1000,
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.white,
     paddingHorizontal: 15,
     paddingVertical: 12,
@@ -546,8 +612,8 @@ const styles = StyleSheet.create({
     margin: 0,
   },
   historyDropdown: {
-    position: 'absolute',
-    top: '100%',
+    position: "absolute",
+    top: "100%",
     left: 0,
     right: 0,
     backgroundColor: Colors.white,
@@ -555,7 +621,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     marginTop: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -563,9 +629,9 @@ const styles = StyleSheet.create({
     zIndex: 1001,
   },
   historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 15,
     paddingVertical: 10,
     borderBottomWidth: 1,
@@ -573,7 +639,7 @@ const styles = StyleSheet.create({
   },
   historyTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textSecondary,
   },
   clearHistoryText: {
@@ -581,8 +647,8 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
   },
   historyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 15,
     paddingVertical: 12,
     gap: 10,
@@ -598,22 +664,22 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   searchResultsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     marginTop: 10,
     marginBottom: 5,
   },
   searchResultsText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textSecondary,
   },
   searchQueryText: {
     fontSize: 12,
     color: Colors.textLight,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     flex: 1,
     marginLeft: 8,
   },
@@ -626,10 +692,10 @@ const styles = StyleSheet.create({
   clearSearchText: {
     fontSize: 12,
     color: Colors.textSecondary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   reportButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 20,
     marginTop: 15,
     gap: 12,
@@ -647,17 +713,17 @@ const styles = StyleSheet.create({
     width: 45,
     height: 45,
     borderRadius: 12,
-    backgroundColor: 'rgba(10, 22, 40, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(10, 22, 40, 0.05)",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 10,
   },
   reportFoundIconContainer: {
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    backgroundColor: "rgba(76, 175, 80, 0.1)",
   },
   reportButtonText: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
     marginBottom: 4,
   },
@@ -666,7 +732,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   tabsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 20,
     marginTop: 20,
     marginBottom: 15,
@@ -686,7 +752,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textSecondary,
   },
   tabTextActive: {
@@ -700,13 +766,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 60,
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textSecondary,
     marginTop: 15,
   },
@@ -714,11 +780,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textLight,
     marginTop: 5,
-    textAlign: 'center',
+    textAlign: "center",
   },
   suggestions: {
     marginTop: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   suggestionsTitle: {
     fontSize: 14,
@@ -746,6 +812,6 @@ const styles = StyleSheet.create({
   clearSearchTextLarge: {
     fontSize: 14,
     color: Colors.white,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

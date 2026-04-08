@@ -1,6 +1,4 @@
-// app/(auth)/_layout.tsx
-
-import { Stack } from 'expo-router';
+import { Stack } from "expo-router";
 
 export default function AuthLayout() {
   return (
@@ -14,7 +12,10 @@ export default function AuthLayout() {
       <Stack.Screen name="signup" />
       <Stack.Screen name="email-verification" />
       <Stack.Screen name="email-verified" />
-      <Stack.Screen name="complete-profile" />
+      <Stack.Screen
+        name="complete-profile"
+        options={{ headerShown: false, gestureEnabled: true }}
+      />
     </Stack>
   );
 }

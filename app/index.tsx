@@ -1,10 +1,18 @@
 // app/index.tsx
 
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { account } from '../config/appwrite';
-import Colors from '../constants/Colors';
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  ImageBackground,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { account } from "../config/appwrite";
+import Colors from "../constants/Colors";
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -17,9 +25,13 @@ export default function WelcomeScreen() {
   const checkSession = async () => {
     try {
       // Check if user is already logged in
-      await account.get();
+      const user = await account.get();
+      // if (!user.emailVerification) {
+      //   router.replace("/(auth)/email-verification");
+      //   return;
+      // }
       // User is logged in, redirect to home
-      router.replace('/(tabs)/home');
+      router.replace("/(tabs)/home");
     } catch (error) {
       // No active session, show splash screen
       setChecking(false);
@@ -36,7 +48,7 @@ export default function WelcomeScreen() {
 
   return (
     <ImageBackground
-      source={require('../assets/images/background.jpg')}
+      source={require("../assets/images/background.jpg")}
       style={styles.background}
       resizeMode="cover"
     >
@@ -44,7 +56,7 @@ export default function WelcomeScreen() {
         <View style={styles.content}>
           <View style={styles.logoContainer}>
             <Image
-              source={require('../assets/images/logo.png')}
+              source={require("../assets/images/logo.png")}
               style={styles.logo}
               resizeMode="contain"
             />
@@ -56,17 +68,18 @@ export default function WelcomeScreen() {
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => router.push('/(onboarding)/onboarding')}
+            onPress={() => router.push("/(onboarding)/onboarding")}
           >
             <Text style={styles.buttonText}>Get Started</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => router.push('/(auth)/login')}
+            onPress={() => router.push("/(auth)/login")}
             style={styles.loginLink}
           >
             <Text style={styles.loginText}>
-              Already have an account? <Text style={styles.loginTextBold}>Login</Text>
+              Already have an account?{" "}
+              <Text style={styles.loginTextBold}>Login</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -78,8 +91,8 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: Colors.background,
   },
   background: {
@@ -91,8 +104,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   logoContainer: {
     marginBottom: 20,
@@ -103,8 +116,8 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontSize: 24,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: "600",
+    textAlign: "center",
     color: Colors.textSecondary,
     marginTop: 20,
   },
@@ -115,23 +128,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     paddingVertical: 15,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 15,
   },
   buttonText: {
     color: Colors.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loginLink: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   loginText: {
     fontSize: 14,
     color: Colors.textSecondary,
   },
   loginTextBold: {
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.primary,
   },
 });

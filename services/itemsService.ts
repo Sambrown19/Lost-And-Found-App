@@ -1,33 +1,42 @@
-import { ID, Query } from 'react-native-appwrite';
-import { account, DATABASE_ID, databases, ITEMS_COLLECTION_ID, storage, STORAGE_BUCKET_ID, USERS_COLLECTION_ID } from '../config/appwrite';
+import { ID, Query } from "react-native-appwrite";
+import {
+  account,
+  DATABASE_ID,
+  databases,
+  ITEMS_COLLECTION_ID,
+  storage,
+  STORAGE_BUCKET_ID,
+  USERS_COLLECTION_ID,
+} from "../config/appwrite";
 export interface Item {
   $id?: string;
   userId: string;
   userName: string;
   userEmail: string;
-  type: 'lost' | 'found';
+  type: "lost" | "found";
   title: string;
   description: string;
   category: string;
   location: string;
   date: string;
   images: string;
-  status: 'active' | 'claimed' | 'resolved';
+  status: "active" | "claimed" | "resolved";
   createdAt: string;
 }
 
-export const createItem = async (data: Omit<Item, '$id' | 'userId' | 'userName' | 'userEmail' | 'createdAt'>) => {
-
+export const createItem = async (
+  data: Omit<Item, "$id" | "userId" | "userName" | "userEmail" | "createdAt">,
+) => {
   const user = await account.get();
-  
+
   const userProfile = await databases.listDocuments(
     DATABASE_ID,
     USERS_COLLECTION_ID,
-    [Query.equal('userId', user.$id)]
+    [Query.equal("userId", user.$id)],
   );
-  
-  const userName = userProfile.documents[0]?.fullName || 'Anonymous';
-  
+
+  const userName = userProfile.documents[0]?.fullName || "Anonymous";
+
   const item = await databases.createDocument(
     DATABASE_ID,
     ITEMS_COLLECTION_ID,
@@ -45,9 +54,9 @@ export const createItem = async (data: Omit<Item, '$id' | 'userId' | 'userName' 
       images: data.images,
       status: data.status,
       createdAt: new Date().toISOString(),
-    }
+    },
   );
-  
+
   return item;
 };
 
@@ -56,70 +65,82 @@ export const getAllItems = async () => {
     DATABASE_ID,
     ITEMS_COLLECTION_ID,
     [
-      Query.equal('status', 'active'),
-      Query.orderDesc('createdAt'),
-      Query.limit(50)
-    ]
+      Query.equal("status", "active"),
+      Query.orderDesc("createdAt"),
+      Query.limit(50),
+    ],
   );
-  
+
   return response.documents as any[];
 };
 
-export const getItemsByType = async (type: 'lost' | 'found') => {
+export const getItemsByType = async (type: "lost" | "found") => {
   const response = await databases.listDocuments(
     DATABASE_ID,
     ITEMS_COLLECTION_ID,
     [
-      Query.equal('type', type),
-      Query.equal('status', 'active'),
-      Query.orderDesc('createdAt'),
-      Query.limit(50)
-    ]
+      Query.equal("type", type),
+      Query.equal("status", "active"),
+      Query.orderDesc("createdAt"),
+      Query.limit(50),
+    ],
   );
 
   return response.documents;
 };
 
-
 export const getUserItems = async () => {
   const user = await account.get();
-  
+
   const response = await databases.listDocuments(
     DATABASE_ID,
     ITEMS_COLLECTION_ID,
-    [
-      Query.equal('userId', user.$id),
-      Query.orderDesc('createdAt')
-    ]
+    [Query.equal("userId", user.$id), Query.orderDesc("createdAt")],
   );
-  
-  return response.documents as any[];
 
+  return response.documents as any[];
 };
 
+export const getItemById = async (id: string): Promise<any> => {
+  try {
+    const response = await databases.getDocument(
+      DATABASE_ID,
+      ITEMS_COLLECTION_ID,
+      id,
+    );
+    return response;
+  } catch (error) {
+    console.error("Error fetching item by ID:", error);
+    throw error;
+  }
+};
 
-export const uploadImage = async (uri: string): Promise<string> => {
+const uriToBlob = async (uri: string): Promise<Blob> => {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  return blob;
+};
+
+export const uploadImage = async (asset: any): Promise<string[]> => {
   try {
     const fileId = ID.unique();
-    const filename = uri.split('/').pop() || `image-${Date.now()}.jpg`;
-
-    await storage.createFile(
-      STORAGE_BUCKET_ID,
-      fileId,
-      {
-        uri,
-        name: filename,
-        type: 'image/jpeg',
-        size: 0,
-      }
-    );
-
-    return storage.getFileView(STORAGE_BUCKET_ID, fileId).toString();
-
+    const blob = await uriToBlob(asset.uri);
+    const uploadedFile = await storage.createFile(STORAGE_BUCKET_ID, fileId, {
+      name: asset.fileName || "image.jpg",
+      type: asset.mimeType || "image/jpeg",
+      size: blob.size,
+      uri: asset.uri,
+    });
+    if (!uploadedFile?.$id) {
+      throw new Error("Upload failed - no file ID returned");
+    }
+    const endpoint = storage.client.config.endpoint;
+    const projectId = storage.client.config.project;
+    const fileUrl = `${endpoint}/storage/buckets/${STORAGE_BUCKET_ID}/files/${uploadedFile.$id}/view?project=${projectId}`;
+    console.log("IMAGE URL", fileUrl);
+    return [fileUrl];
   } catch (error: any) {
-    console.error('Single image upload failed:', error);
+    console.error("Single image upload failed:", error);
     throw new Error(`Upload failed: ${error.message}`);
   }
 };
-    
-   

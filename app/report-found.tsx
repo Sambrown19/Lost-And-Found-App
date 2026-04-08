@@ -1,8 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
   Alert,
   Image,
@@ -15,9 +15,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import Colors from '../constants/Colors';
-import { createItem, uploadImage } from '../services/itemsService';
+} from "react-native";
+import Colors from "../constants/Colors";
+import { createItem, uploadImage } from "../services/itemsService";
 
 interface Category {
   id: string;
@@ -26,41 +26,41 @@ interface Category {
 }
 
 const categories: Category[] = [
-  { id: 'electronics', name: 'Electronics', icon: 'phone-portrait-outline' },
-  { id: 'personal', name: 'Personal Items', icon: 'card-outline' },
-  { id: 'accessories', name: 'Accessories', icon: 'watch-outline' },
-  { id: 'books', name: 'Books & Documents', icon: 'book-outline' },
-  { id: 'bags', name: 'Bags & Luggage', icon: 'briefcase-outline' },
-  { id: 'other', name: 'Other', icon: 'add-circle-outline' },
+  { id: "electronics", name: "Electronics", icon: "phone-portrait-outline" },
+  { id: "personal", name: "Personal Items", icon: "card-outline" },
+  { id: "accessories", name: "Accessories", icon: "watch-outline" },
+  { id: "books", name: "Books & Documents", icon: "book-outline" },
+  { id: "bags", name: "Bags & Luggage", icon: "briefcase-outline" },
+  { id: "other", name: "Other", icon: "add-circle-outline" },
 ];
 
 export default function ReportFoundScreen() {
   const router = useRouter();
-  
+
   const [step, setStep] = useState(1);
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [itemName, setItemName] = useState('');
-  const [brand, setBrand] = useState('');
-  const [color, setColor] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [itemName, setItemName] = useState("");
+  const [brand, setBrand] = useState("");
+  const [color, setColor] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [foundLocation, setFoundLocation] = useState('');
-  const [description, setDescription] = useState('');
+  const [foundLocation, setFoundLocation] = useState("");
+  const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
 
   const formatDate = (date: Date) => {
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     const year = String(date.getFullYear()).slice(-2);
     return `${month}/${day}/${year}`;
   };
 
   const formatTime = (date: Date) => {
     let hours = date.getHours();
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
     hours = hours % 12 || 12;
     return `${hours}:${minutes} ${ampm}`;
   };
@@ -79,25 +79,24 @@ export default function ReportFoundScreen() {
     }
   };
 
-
   const pickImage = async () => {
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsMultipleSelection: true,
-    quality: 0.8,
-  });
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
 
-  if (!result.canceled) {
-    const newUris = result.assets.map(asset => asset.uri);
+    if (!result.canceled) {
+      const uploadedUrls = (
+        await Promise.all(result.assets.map((asset) => uploadImage(asset)))
+      ).flat();
 
-    const uploadedUrls = await Promise.all(newUris.map(uri => uploadImage(uri)));
+      const updatedPhotos = [...photos, ...uploadedUrls];
+      setPhotos(updatedPhotos);
 
-    const updatedPhotos = [...photos, ...uploadedUrls];
-    setPhotos(updatedPhotos);
-
-    setPhotos([...photos, ...updatedPhotos]);
-  }
-};
+      setPhotos([...photos, ...updatedPhotos]);
+    }
+  };
 
   const removePhoto = (index: number) => {
     setPhotos(photos.filter((_, i) => i !== index));
@@ -105,45 +104,44 @@ export default function ReportFoundScreen() {
 
   const handleContinue = () => {
     if (step === 1 && !selectedCategory) {
-      Alert.alert('Error', 'Please select a category');
+      Alert.alert("Error", "Please select a category");
       return;
     }
     if (step === 2 && photos.length === 0) {
-      Alert.alert('Error', 'Please add at least one photo');
+      Alert.alert("Error", "Please add at least one photo");
       return;
     }
     setStep(step + 1);
   };
 
-
   const handleSubmit = async () => {
-  try {
-    const response = await createItem({
-      type: 'found',
-      title: itemName,
-      description: description || 'No additional description',
-      category: categories.find(c => c.id === selectedCategory)?.name || selectedCategory,
-      location: foundLocation,
-      date: `${formatDate(selectedDate)} ${formatTime(selectedTime)}`,
-      images: photos.join(','),
-      status: 'active',
-    });
+    try {
+      const response = await createItem({
+        type: "found",
+        title: itemName,
+        description: description || "No additional description",
+        category:
+          categories.find((c) => c.id === selectedCategory)?.name ||
+          selectedCategory,
+        location: foundLocation,
+        date: `${formatDate(selectedDate)} ${formatTime(selectedTime)}`,
+        images: photos.join(","),
+        status: "active",
+      });
 
-    if(response){
-      Alert.alert('Success', 'Found item reported successfully!', [
-        {
-          text: 'OK',
-          onPress: () => router.replace('/(tabs)/home'),
-        },
-      ]);
+      if (response) {
+        Alert.alert("Success", "Found item reported successfully!", [
+          {
+            text: "OK",
+            onPress: () => router.replace("/(tabs)/home"),
+          },
+        ]);
+      }
+    } catch (error: any) {
+      console.error("Submit error:", error);
+      Alert.alert("Error", "Failed to submit report. Please try again.");
     }
-
-    
-  } catch (error: any) {
-    console.error('Submit error:', error);
-    Alert.alert('Error', 'Failed to submit report. Please try again.');
-  }
-};
+  };
 
   const renderStep1 = () => (
     <>
@@ -162,20 +160,29 @@ export default function ReportFoundScreen() {
             ]}
             onPress={() => setSelectedCategory(category.id)}
           >
-            <View style={[
-              styles.categoryIconContainer,
-              selectedCategory === category.id && styles.categoryIconContainerActive,
-            ]}>
-              <Ionicons 
-                name={category.icon as any} 
-                size={28} 
-                color={selectedCategory === category.id ? Colors.white : Colors.primary} 
+            <View
+              style={[
+                styles.categoryIconContainer,
+                selectedCategory === category.id &&
+                  styles.categoryIconContainerActive,
+              ]}
+            >
+              <Ionicons
+                name={category.icon as any}
+                size={28}
+                color={
+                  selectedCategory === category.id
+                    ? Colors.white
+                    : Colors.primary
+                }
               />
             </View>
-            <Text style={[
-              styles.categoryName,
-              selectedCategory === category.id && styles.categoryNameActive,
-            ]}>
+            <Text
+              style={[
+                styles.categoryName,
+                selectedCategory === category.id && styles.categoryNameActive,
+              ]}
+            >
               {category.name}
             </Text>
           </TouchableOpacity>
@@ -187,7 +194,8 @@ export default function ReportFoundScreen() {
         <View style={styles.tipContent}>
           <Text style={styles.tipTitle}>Quick Tip</Text>
           <Text style={styles.tipText}>
-            Choose the category that you feel best describes the item you found. You&apos;ll be able to add more details in the next step.
+            Choose the category that you feel best describes the item you found.
+            You&apos;ll be able to add more details in the next step.
           </Text>
         </View>
       </View>
@@ -205,7 +213,7 @@ export default function ReportFoundScreen() {
 
       <View style={styles.photosSection}>
         <Text style={styles.label}>Upload/Add Photo</Text>
-        
+
         <View style={styles.photosGrid}>
           {photos.map((photo, index) => (
             <View key={index} style={styles.photoItem}>
@@ -218,10 +226,14 @@ export default function ReportFoundScreen() {
               </TouchableOpacity>
             </View>
           ))}
-          
+
           {photos.length < 4 && (
             <TouchableOpacity style={styles.addPhotoButton} onPress={pickImage}>
-              <Ionicons name="camera-outline" size={32} color={Colors.primary} />
+              <Ionicons
+                name="camera-outline"
+                size={32}
+                color={Colors.primary}
+              />
               <Text style={styles.addPhotoText}>Add Photo</Text>
             </TouchableOpacity>
           )}
@@ -237,10 +249,11 @@ export default function ReportFoundScreen() {
         <View style={styles.tipContent}>
           <Text style={styles.tipTitle}>Photo Tips</Text>
           <Text style={styles.tipText}>
-            {'\u2022'} Take clear and well-lit photos from multiple angles{'\n'}
-            {'\u2022'} Include any unique features that will help in identifying the item{'\n'}
-            {'\u2022'} Verify images are good before submission{'\n'}
-            {'\u2022'} Avoid adding pictures with faces
+            {"\u2022"} Take clear and well-lit photos from multiple angles{"\n"}
+            {"\u2022"} Include any unique features that will help in identifying
+            the item{"\n"}
+            {"\u2022"} Verify images are good before submission{"\n"}
+            {"\u2022"} Avoid adding pictures with faces
           </Text>
         </View>
       </View>
@@ -251,56 +264,64 @@ export default function ReportFoundScreen() {
     </>
   );
 
-// Step 3: Privacy Protection
-const renderStep3 = () => (
-  <>
-    <Text style={styles.stepTitle}>Privacy Protection</Text>
-    <Text style={styles.stepSubtitle}>We prioritize your safety and privacy</Text>
+  // Step 3: Privacy Protection
+  const renderStep3 = () => (
+    <>
+      <Text style={styles.stepTitle}>Privacy Protection</Text>
+      <Text style={styles.stepSubtitle}>
+        We prioritize your safety and privacy
+      </Text>
 
-    <View style={styles.privacySection}>
-      <Text style={styles.label}>Item Photos</Text>
-      
-      <View style={styles.privacyPreview}>
-        <View style={styles.privacyPhotosGrid}>
-          {photos.map((photo, index) => (
-            <View key={index} style={styles.privacyImageContainer}>
-              <Image 
-                source={{ uri: photo }} 
-                style={styles.privacyImage} 
-                blurRadius={10}
-              />
+      <View style={styles.privacySection}>
+        <Text style={styles.label}>Item Photos</Text>
+
+        <View style={styles.privacyPreview}>
+          <View style={styles.privacyPhotosGrid}>
+            {photos.map((photo, index) => (
+              <View key={index} style={styles.privacyImageContainer}>
+                <Image
+                  source={{ uri: photo }}
+                  style={styles.privacyImage}
+                  blurRadius={10}
+                />
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.privacyBadges}>
+            <View style={styles.privacyBadge}>
+              <Ionicons name="eye-off" size={16} color={Colors.primary} />
+              <Text style={styles.privacyBadgeText}>Blurred</Text>
             </View>
-          ))}
-        </View>
-        
-        <View style={styles.privacyBadges}>
-          <View style={styles.privacyBadge}>
-            <Ionicons name="eye-off" size={16} color={Colors.primary} />
-            <Text style={styles.privacyBadgeText}>Blurred</Text>
-          </View>
-          <View style={styles.privacyBadge}>
-            <Ionicons name="shield-checkmark" size={16} color={Colors.primary} />
-            <Text style={styles.privacyBadgeText}>Verified</Text>
+            <View style={styles.privacyBadge}>
+              <Ionicons
+                name="shield-checkmark"
+                size={16}
+                color={Colors.primary}
+              />
+              <Text style={styles.privacyBadgeText}>Verified</Text>
+            </View>
           </View>
         </View>
       </View>
-    </View>
 
-    <View style={styles.tipBox}>
-      <Ionicons name="bulb-outline" size={20} color={Colors.primary} />
-      <View style={styles.tipContent}>
-        <Text style={styles.tipTitle}>Ready Tip</Text>
-        <Text style={styles.tipText}>
-          We're going to blur the photos of the found item and only verified students can view the non-blurred version. This is done for privacy purposes.
-        </Text>
+      <View style={styles.tipBox}>
+        <Ionicons name="bulb-outline" size={20} color={Colors.primary} />
+        <View style={styles.tipContent}>
+          <Text style={styles.tipTitle}>Ready Tip</Text>
+          <Text style={styles.tipText}>
+            We're going to blur the photos of the found item and only verified
+            students can view the non-blurred version. This is done for privacy
+            purposes.
+          </Text>
+        </View>
       </View>
-    </View>
 
-    <TouchableOpacity style={styles.button} onPress={handleContinue}>
-      <Text style={styles.buttonText}>Continue</Text>
-    </TouchableOpacity>
-  </>
-);
+      <TouchableOpacity style={styles.button} onPress={handleContinue}>
+        <Text style={styles.buttonText}>Continue</Text>
+      </TouchableOpacity>
+    </>
+  );
   // Step 4: Item Details (was Step 5)
   const renderStep4 = () => (
     <>
@@ -340,12 +361,18 @@ const renderStep3 = () => (
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Date/Found</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.inputWithIcon}
             onPress={() => setShowDatePicker(true)}
           >
-            <Text style={styles.inputWithIconText}>{formatDate(selectedDate)}</Text>
-            <Ionicons name="calendar-outline" size={20} color={Colors.textLight} />
+            <Text style={styles.inputWithIconText}>
+              {formatDate(selectedDate)}
+            </Text>
+            <Ionicons
+              name="calendar-outline"
+              size={20}
+              color={Colors.textLight}
+            />
           </TouchableOpacity>
         </View>
 
@@ -360,11 +387,13 @@ const renderStep3 = () => (
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Time/Found</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.inputWithIcon}
             onPress={() => setShowTimePicker(true)}
           >
-            <Text style={styles.inputWithIconText}>{formatTime(selectedTime)}</Text>
+            <Text style={styles.inputWithIconText}>
+              {formatTime(selectedTime)}
+            </Text>
             <Ionicons name="time-outline" size={20} color={Colors.textLight} />
           </TouchableOpacity>
         </View>
@@ -387,7 +416,11 @@ const renderStep3 = () => (
               onChangeText={setFoundLocation}
               placeholder="Phase 2"
             />
-            <Ionicons name="location-outline" size={20} color={Colors.textLight} />
+            <Ionicons
+              name="location-outline"
+              size={20}
+              color={Colors.textLight}
+            />
           </View>
         </View>
 
@@ -420,48 +453,56 @@ const renderStep3 = () => (
       </Text>
 
       <View style={styles.locationOptions}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
             styles.locationOption,
-            foundLocation === 'I have it with me' && styles.locationOptionActive
+            foundLocation === "I have it with me" &&
+              styles.locationOptionActive,
           ]}
-          onPress={() => setFoundLocation('I have it with me')}
+          onPress={() => setFoundLocation("I have it with me")}
         >
           <Ionicons name="person" size={24} color={Colors.primary} />
           <Text style={styles.locationOptionText}>I have it with me</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
             styles.locationOption,
-            foundLocation === 'Left at campus security office' && styles.locationOptionActive
+            foundLocation === "Left at campus security office" &&
+              styles.locationOptionActive,
           ]}
-          onPress={() => setFoundLocation('Left at campus security office')}
+          onPress={() => setFoundLocation("Left at campus security office")}
         >
           <Ionicons name="business" size={24} color={Colors.primary} />
-          <Text style={styles.locationOptionText}>Left at campus security office</Text>
+          <Text style={styles.locationOptionText}>
+            Left at campus security office
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
             styles.locationOption,
-            foundLocation === 'Left at location found' && styles.locationOptionActive
+            foundLocation === "Left at location found" &&
+              styles.locationOptionActive,
           ]}
-          onPress={() => setFoundLocation('Left at location found')}
+          onPress={() => setFoundLocation("Left at location found")}
         >
           <Ionicons name="location-outline" size={24} color={Colors.primary} />
           <Text style={styles.locationOptionText}>Left at location found</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
             styles.locationOption,
-            foundLocation === 'Left at student support unit' && styles.locationOptionActive
+            foundLocation === "Left at student support unit" &&
+              styles.locationOptionActive,
           ]}
-          onPress={() => setFoundLocation('Left at student support unit')}
+          onPress={() => setFoundLocation("Left at student support unit")}
         >
           <Ionicons name="school" size={24} color={Colors.primary} />
-          <Text style={styles.locationOptionText}>Left at student support unit</Text>
+          <Text style={styles.locationOptionText}>
+            Left at student support unit
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -475,8 +516,8 @@ const renderStep3 = () => (
   const renderStep6 = () => (
     <View style={styles.thankYouContainer}>
       <View style={styles.thankYouIcon}>
-        <Image 
-          source={require('../assets/images/Thank-you.png')} 
+        <Image
+          source={require("../assets/images/Thank-you.png")}
           style={styles.thankYouImage}
           resizeMode="contain"
         />
@@ -484,7 +525,8 @@ const renderStep3 = () => (
 
       <Text style={styles.thankYouTitle}>Thank You!! 🎉</Text>
       <Text style={styles.thankYouMessage}>
-        Your report has been submitted. You&apos;re helping someone get their item back!
+        Your report has been submitted. You&apos;re helping someone get their
+        item back!
       </Text>
 
       <View style={styles.reportDetails}>
@@ -497,7 +539,9 @@ const renderStep3 = () => (
 
         <View style={styles.reportDetailItem}>
           <Text style={styles.reportDetailLabel}>Date</Text>
-          <Text style={styles.reportDetailValue}>{formatDate(selectedDate)}</Text>
+          <Text style={styles.reportDetailValue}>
+            {formatDate(selectedDate)}
+          </Text>
         </View>
 
         <View style={styles.reportDetailDivider} />
@@ -515,24 +559,28 @@ const renderStep3 = () => (
   );
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
-      
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => step > 1 ? setStep(step - 1) : router.back()}>
+        <TouchableOpacity
+          onPress={() => (step > 1 ? setStep(step - 1) : router.back())}
+        >
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${(step / 6) * 100}%` }]} />
+          <View
+            style={[styles.progressFill, { width: `${(step / 6) * 100}%` }]}
+          />
         </View>
       </View>
 
-      <ScrollView 
-        style={styles.content} 
+      <ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -555,8 +603,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 15,
@@ -570,7 +618,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     backgroundColor: Colors.primary,
     borderRadius: 2,
   },
@@ -583,7 +631,7 @@ const styles = StyleSheet.create({
   },
   stepTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
     marginBottom: 8,
   },
@@ -593,17 +641,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
     marginBottom: 20,
   },
   categoryCard: {
-    width: '47%',
+    width: "47%",
     backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 2,
     borderColor: Colors.border,
   },
@@ -615,26 +663,26 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(10, 22, 40, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(10, 22, 40, 0.05)",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 12,
   },
   categoryIconContainerActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   categoryName: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textPrimary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   categoryNameActive: {
     color: Colors.white,
   },
   tipBox: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(10, 22, 40, 0.03)',
+    flexDirection: "row",
+    backgroundColor: "rgba(10, 22, 40, 0.03)",
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
@@ -645,7 +693,7 @@ const styles = StyleSheet.create({
   },
   tipTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textPrimary,
     marginBottom: 4,
   },
@@ -658,8 +706,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   photosGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
     marginBottom: 8,
   },
@@ -667,15 +715,15 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 8,
-    position: 'relative',
+    position: "relative",
   },
   photoImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     borderRadius: 8,
   },
   removePhotoButton: {
-    position: 'absolute',
+    position: "absolute",
     top: -8,
     right: -8,
   },
@@ -685,9 +733,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 2,
     borderColor: Colors.border,
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: Colors.white,
   },
   addPhotoText: {
@@ -701,55 +749,55 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textPrimary,
     marginBottom: 8,
   },
   privacySection: {
-  marginBottom: 20,
-},
-privacyPreview: {
-  backgroundColor: Colors.white,
-  borderRadius: 12,
-  padding: 20,
-  alignItems: 'center',
-  marginBottom: 20,
-},
-privacyPhotosGrid: {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  gap: 12,
-  marginBottom: 16,
-  justifyContent: 'center',
-},
-privacyImageContainer: {
-  width: 90,
-  height: 90,
-  borderRadius: 12,
-  overflow: 'hidden',
-},
-privacyImage: {
-  width: '100%',
-  height: '100%',
-},
-privacyBadges: {
-  flexDirection: 'row',
-  gap: 10,
-},
-privacyBadge: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 6,
-  backgroundColor: 'rgba(10, 22, 40, 0.05)',
-  paddingHorizontal: 12,
-  paddingVertical: 6,
-  borderRadius: 6,
-},
-privacyBadgeText: {
-  fontSize: 12,
-  color: Colors.primary,
-  fontWeight: '600',
-},
+    marginBottom: 20,
+  },
+  privacyPreview: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  privacyPhotosGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 16,
+    justifyContent: "center",
+  },
+  privacyImageContainer: {
+    width: 90,
+    height: 90,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  privacyImage: {
+    width: "100%",
+    height: "100%",
+  },
+  privacyBadges: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  privacyBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(10, 22, 40, 0.05)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  privacyBadgeText: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: "600",
+  },
   form: {
     marginBottom: 20,
   },
@@ -771,8 +819,8 @@ privacyBadgeText: {
     paddingTop: 12,
   },
   inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.white,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -790,8 +838,8 @@ privacyBadgeText: {
     marginBottom: 20,
   },
   locationOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.white,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -801,23 +849,23 @@ privacyBadgeText: {
   },
   locationOptionActive: {
     borderColor: Colors.primary,
-    backgroundColor: 'rgba(10, 22, 40, 0.03)',
+    backgroundColor: "rgba(10, 22, 40, 0.03)",
   },
   locationOptionText: {
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: "500",
     color: Colors.textPrimary,
     flex: 1,
   },
   thankYouContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 40,
   },
   thankYouIcon: {
     width: 120,
     height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 20,
   },
   thankYouImage: {
@@ -826,41 +874,41 @@ privacyBadgeText: {
   },
   thankYouTitle: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
     marginBottom: 12,
   },
   thankYouMessage: {
     fontSize: 15,
     color: Colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 30,
     paddingHorizontal: 20,
   },
   reportDetails: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
-    width: '100%',
+    width: "100%",
   },
   reportDetailItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   reportDetailLabel: {
     fontSize: 11,
     color: Colors.textSecondary,
     marginBottom: 8,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   reportDetailValue: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textPrimary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   reportDetailDivider: {
     width: 1,
@@ -872,7 +920,7 @@ privacyBadgeText: {
     borderRadius: 12,
     padding: 16,
     marginBottom: 30,
-    width: '100%',
+    width: "100%",
   },
   thankYouContactLabel: {
     fontSize: 12,
@@ -881,20 +929,20 @@ privacyBadgeText: {
   },
   thankYouContactValue: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textPrimary,
   },
   button: {
     backgroundColor: Colors.primary,
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 100,
-    width: '100%',
+    width: "100%",
   },
   buttonText: {
     color: Colors.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

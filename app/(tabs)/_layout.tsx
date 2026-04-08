@@ -1,8 +1,6 @@
-// app/(tabs)/_layout.tsx
-
-import { Tabs } from 'expo-router';
-import { Image } from 'react-native';
-import Colors from '../../constants/Colors';
+import { Tabs } from "expo-router";
+import { Image } from "react-native";
+import Colors from "../../constants/Colors";
 
 export default function TabLayout() {
   return (
@@ -20,7 +18,7 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '600',
+          fontWeight: "600",
         },
         headerShown: false,
       }}
@@ -28,10 +26,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
+          title: "Home",
           tabBarIcon: ({ focused }) => (
             <Image
-              source={require('../../assets/images/home-01.png')}
+              source={require("../../assets/images/home-01.png")}
               style={{
                 width: 24,
                 height: 24,
@@ -45,10 +43,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="messages"
         options={{
-          title: 'Messages',
+          title: "Messages",
           tabBarIcon: ({ focused }) => (
             <Image
-              source={require('../../assets/images/Messages.png')}
+              source={require("../../assets/images/Messages.png")}
               style={{
                 width: 24,
                 height: 24,
@@ -61,10 +59,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="account"
         options={{
-          title: 'Account',
+          title: "Account",
           tabBarIcon: ({ focused }) => (
             <Image
-              source={require('../../assets/images/Account.png')}
+              source={require("../../assets/images/Account.png")}
               style={{
                 width: 24,
                 height: 24,
