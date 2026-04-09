@@ -15,7 +15,12 @@ import {
     View,
 } from 'react-native';
 import { uploadImage } from '../services/itemsService';
-import { UserProfile, getUserProfile, updateUserProfile } from '../services/userService';
+import { 
+  UserProfile, 
+  getUserProfile, 
+  updateUserProfile ,
+  uploadProfileImage
+} from '../services/userService';
 
 export default function ProfileScreen() {
   const { colors, isDark } = useTheme();
@@ -85,33 +90,34 @@ export default function ProfileScreen() {
     }
   };
 
-  const pickProfileImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
+ const pickProfileImage = async () => {
+  try {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
 
-      if (!result.canceled) {
-        setUploadingImage(true);
-        const imageUri = result.assets[0].uri;
-        
-        const uploadedUrl = await uploadImage(imageUri);
-        
-        await updateUserProfile({ profileImage: uploadedUrl[0] });
-        
-        await loadProfile(); 
-        Alert.alert('Success', 'Profile image updated');
-      }
-    } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to update profile image');
-    } finally {
-      setUploadingImage(false);
+    if (!result.canceled) {
+      setUploadingImage(true);
+      const imageUri = result.assets[0].uri;
+      
+      // Call uploadProfileImage, NOT uploadImage
+      const uploadedUrl = await uploadProfileImage(imageUri);
+      console.log("URL to save:", uploadedUrl);
+      
+      await updateUserProfile({ profileImage: uploadedUrl });
+      
+      await loadProfile();
+      Alert.alert('Success', 'Profile image updated');
     }
-  };
+  } catch (error) {
+    console.error('Error:', error);
+  } finally {
+    setUploadingImage(false);
+  }
+};
 
   const getInitials = (name: string): string => {
     if (!name) return '';

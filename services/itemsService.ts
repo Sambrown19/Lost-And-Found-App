@@ -121,26 +121,38 @@ const uriToBlob = async (uri: string): Promise<Blob> => {
   return blob;
 };
 
-export const uploadImage = async (asset: any): Promise<string[]> => {
+export const uploadImage = async (imageUri: string) => {
   try {
-    const fileId = ID.unique();
-    const blob = await uriToBlob(asset.uri);
-    const uploadedFile = await storage.createFile(STORAGE_BUCKET_ID, fileId, {
-      name: asset.fileName || "image.jpg",
-      type: asset.mimeType || "image/jpeg",
-      size: blob.size,
-      uri: asset.uri,
-    });
-    if (!uploadedFile?.$id) {
-      throw new Error("Upload failed - no file ID returned");
-    }
-    const endpoint = storage.client.config.endpoint;
-    const projectId = storage.client.config.project;
-    const fileUrl = `${endpoint}/storage/buckets/${STORAGE_BUCKET_ID}/files/${uploadedFile.$id}/view?project=${projectId}`;
-    console.log("IMAGE URL", fileUrl);
-    return [fileUrl];
-  } catch (error: any) {
-    console.error("Single image upload failed:", error);
-    throw new Error(`Upload failed: ${error.message}`);
+    // Make sure we have a valid session
+    const user = await account.get();
+    console.log("Uploading for user:", user.$id);
+    
+    // Get file info
+    const fileName = imageUri.split('/').pop() || `image_${Date.now()}.jpg`;
+    const fileType = 'image/jpeg';
+    
+    // Create file object in the format Appwrite expects
+    const file = {
+      uri: imageUri,
+      name: fileName,
+      type: fileType,
+      size: 0, // Size will be handled automatically
+    };
+    
+    // Upload using Appwrite SDK
+    const result = await storage.createFile(
+      STORAGE_BUCKET_ID,
+      ID.unique(),
+      file
+    );
+    
+    // Get the correct view URL
+    const imageUrl = storage.getFileView(STORAGE_BUCKET_ID, result.$id);
+    console.log("Upload successful:", imageUrl);
+    
+    return imageUrl.toString();
+  } catch (error) {
+    console.error('Upload error:', error);
+    throw error;
   }
 };

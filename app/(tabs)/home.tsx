@@ -160,10 +160,6 @@ export default function HomeScreen() {
     }
   };
 
-  useEffect(() => { loadUserProfile(); loadSearchHistory(); }, []);
-  useEffect(() => { loadItems(); }, [activeTab]);
-  useEffect(() => { if (!searchQuery) setFilteredItems(items); }, [items, searchQuery]);
-
   const loadUserProfile = async () => {
     setLoading(true);
     try {
@@ -176,6 +172,10 @@ export default function HomeScreen() {
     }
   };
 
+  useEffect(() => { loadUserProfile(); loadSearchHistory(); }, []);
+  useEffect(() => { loadItems(); }, [activeTab]);
+  useEffect(() => { if (!searchQuery) setFilteredItems(items); }, [items, searchQuery]);
+
   if (initialLoading) return <HomeScreenSkeleton />;
 
   const firstName = userProfile?.fullName?.split(" ")[0] || "User";
@@ -186,6 +186,7 @@ export default function HomeScreen() {
         barStyle={isDark ? "light-content" : "dark-content"}
         backgroundColor={colors.white}
       />
+
 
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.white }]}>

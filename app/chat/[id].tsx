@@ -17,15 +17,15 @@ import {
   View,
   Alert,
 } from "react-native";
-import { account } from "../../config/appwrite";
+import { account, DATABASE_ID, CONVERSATIONS_COLLECTION_ID, databases } from "../../config/appwrite";
 import {
   getConversationMessages,
   markMessagesAsRead,
   sendMessage,
 } from "../../services/messagesService";
 
-// Helper function to get initials
 const getInitials = (name: string) => {
+  if (!name) return "?";
   return name
     .split(" ")
     .map((part) => part[0])
@@ -35,9 +35,8 @@ const getInitials = (name: string) => {
 };
 
 export default function ChatDetailScreen() {
-  const { colors, isDark } = useTheme();
-  const { id, otherUserId, otherUserName, itemId, itemTitle, itemImage } =
-    useLocalSearchParams();
+  const { colors } = useTheme();
+  const { id, itemId, itemTitle, itemImage } = useLocalSearchParams();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -45,28 +44,42 @@ export default function ChatDetailScreen() {
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState("");
+  const [otherUserId, setOtherUserId] = useState("");
+  const [otherUserName, setOtherUserName] = useState("");
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    getCurrentUser();
-    loadMessages();
+    initChat();
 
-    // Set up polling interval for new messages (every 3 seconds)
     const interval = setInterval(() => {
-      if (id) {
-        loadMessages(false); // Don't show loading indicator for auto-refresh
-      }
+      if (id) loadMessages(false);
     }, 3000);
 
     return () => clearInterval(interval);
   }, [id]);
 
-  const getCurrentUser = async () => {
+  const initChat = async () => {
     try {
       const user = await account.get();
       setCurrentUserId(user.$id);
+
+      // Load conversation to derive the other user dynamically
+      const conversation = await databases.getDocument(
+        DATABASE_ID,
+        CONVERSATIONS_COLLECTION_ID,
+        id as string,
+      );
+
+      const participants: string[] = conversation.participants;
+      const participantNames: string[] = conversation.participantNames.split(",");
+
+      const otherIndex = participants[0] === user.$id ? 1 : 0;
+      setOtherUserId(participants[otherIndex]);
+      setOtherUserName(participantNames[otherIndex]);
+
+      await loadMessages();
     } catch (error) {
-      console.error("Get user error:", error);
+      console.error("Init chat error:", error);
     }
   };
 
@@ -75,11 +88,7 @@ export default function ChatDetailScreen() {
       if (showLoading) setLoading(true);
       const data = await getConversationMessages(id as string);
       setMessages(data);
-
-      // Mark messages as read
       await markMessagesAsRead(id as string);
-
-      // Scroll to bottom after loading
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: false });
       }, 100);
@@ -100,23 +109,20 @@ export default function ChatDetailScreen() {
     try {
       await sendMessage(
         id as string,
-        otherUserId as string,
-        otherUserName as string,
+        otherUserId,
+        otherUserName,
         messageText,
         itemId as string,
         itemTitle as string,
       );
 
       await loadMessages(false);
-
-      // Scroll to bottom
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
       console.error("Send message error:", error);
       Alert.alert("Error", "Failed to send message. Please try again.");
-      // Restore the message if sending failed
       setNewMessage(messageText);
     } finally {
       setSending(false);
@@ -140,10 +146,7 @@ export default function ChatDetailScreen() {
     } else if (days < 7) {
       return date.toLocaleDateString("en-US", { weekday: "short" });
     } else {
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     }
   };
 
@@ -154,9 +157,7 @@ export default function ChatDetailScreen() {
       <View
         style={[
           styles.messageContainer,
-          isMyMessage
-            ? styles.myMessageContainer
-            : styles.theirMessageContainer,
+          isMyMessage ? styles.myMessageContainer : styles.theirMessageContainer,
         ]}
       >
         {!isMyMessage && (
@@ -170,7 +171,7 @@ export default function ChatDetailScreen() {
         <View
           style={[
             styles.messageBubble,
-            isMyMessage 
+            isMyMessage
               ? [styles.myMessageBubble, { backgroundColor: colors.primary }]
               : [styles.theirMessageBubble, { backgroundColor: colors.white }],
           ]}
@@ -183,9 +184,9 @@ export default function ChatDetailScreen() {
           <Text
             style={[
               styles.messageText,
-              isMyMessage 
-                ? [styles.myMessageText, { color: colors.white }]
-                : [styles.theirMessageText, { color: colors.textPrimary }],
+              isMyMessage
+                ? { color: colors.white }
+                : { color: colors.textPrimary },
             ]}
           >
             {item.message}
@@ -194,9 +195,9 @@ export default function ChatDetailScreen() {
             <Text
               style={[
                 styles.messageTime,
-                isMyMessage 
-                  ? [styles.myMessageTime, { color: "rgba(255, 255, 255, 0.7)" }]
-                  : [styles.theirMessageTime, { color: colors.textLight }],
+                isMyMessage
+                  ? { color: "rgba(255, 255, 255, 0.7)" }
+                  : { color: colors.textLight },
               ]}
             >
               {formatTime(item.createdAt)}
@@ -217,33 +218,27 @@ export default function ChatDetailScreen() {
   const renderHeader = () => {
     if (!itemTitle) return null;
 
-    // Handle itemImage if it's a string or array
     const imageUrl = itemImage
-      ? Array.isArray(itemImage)
-        ? itemImage[0]
-        : itemImage
+      ? Array.isArray(itemImage) ? itemImage[0] : itemImage
       : null;
 
     return (
       <TouchableOpacity
-        style={[
-          styles.itemInfoCard,
-          { backgroundColor: colors.white },
-        ]}
+        style={[styles.itemInfoCard, { backgroundColor: colors.white }]}
         onPress={() => {
-          if (itemId) {
-            router.push(`/item/${itemId}`);
-          }
+          if (itemId) router.push(`/item/${itemId}` as any);
         }}
       >
         {imageUrl && (
-          <Image source={{ uri: imageUrl }} style={styles.itemImage} />
+          <Image source={{ uri: imageUrl as string }} style={styles.itemImage} />
         )}
         <View style={styles.itemInfo}>
           <Text style={[styles.itemTitle, { color: colors.textPrimary }]} numberOfLines={1}>
             {itemTitle}
           </Text>
-          <Text style={[styles.itemSubtitle, { color: colors.textSecondary }]}>Lost Item</Text>
+          <Text style={[styles.itemSubtitle, { color: colors.textSecondary }]}>
+            Lost Item
+          </Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
       </TouchableOpacity>
@@ -264,13 +259,7 @@ export default function ChatDetailScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
-      <View style={[
-        styles.header, 
-        { 
-          backgroundColor: colors.white,
-          borderBottomColor: colors.border,
-        }
-      ]}>
+      <View style={[styles.header, { backgroundColor: colors.white, borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.push("/messages")}
@@ -282,27 +271,28 @@ export default function ChatDetailScreen() {
           style={styles.headerCenter}
           onPress={() => {
             if (otherUserId) {
-              router.push(`/profile/${otherUserId}` as any);
+              router.push({
+                pathname: "/profile",
+                params: { id: otherUserId },
+              });
             }
           }}
         >
           <View style={[styles.headerAvatar, { backgroundColor: colors.primary }]}>
             <Text style={[styles.headerAvatarText, { color: colors.white }]}>
-              {getInitials(otherUserName as string)}
+              {getInitials(otherUserName)}
             </Text>
           </View>
           <View>
-            <Text style={[styles.headerName, { color: colors.textPrimary }]}>{otherUserName}</Text>
+            <Text style={[styles.headerName, { color: colors.textPrimary }]}>
+              {otherUserName || "..."}
+            </Text>
             <Text style={[styles.headerStatus, { color: "#4CAF50" }]}>Online</Text>
           </View>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.moreButton}>
-          <Ionicons
-            name="ellipsis-vertical"
-            size={20}
-            color={colors.textPrimary}
-          />
+          <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -313,17 +303,11 @@ export default function ChatDetailScreen() {
         keyExtractor={(item) => item.$id}
         contentContainerStyle={styles.messagesList}
         ListHeaderComponent={renderHeader}
-        onContentSizeChange={() =>
-          flatListRef.current?.scrollToEnd({ animated: false })
-        }
+        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
         onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons
-              name="chatbubble-outline"
-              size={50}
-              color={colors.textLight}
-            />
+            <Ionicons name="chatbubble-outline" size={50} color={colors.textLight} />
             <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No messages yet</Text>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               Start the conversation by sending a message
@@ -339,29 +323,13 @@ export default function ChatDetailScreen() {
         </Text>
       </View>
 
-      <View style={[
-        styles.inputContainer, 
-        { 
-          backgroundColor: colors.white,
-          borderTopColor: colors.border,
-        }
-      ]}>
+      <View style={[styles.inputContainer, { backgroundColor: colors.white, borderTopColor: colors.border }]}>
         <TouchableOpacity style={styles.attachButton}>
-          <Ionicons
-            name="add-circle-outline"
-            size={28}
-            color={colors.primary}
-          />
+          <Ionicons name="add-circle-outline" size={28} color={colors.primary} />
         </TouchableOpacity>
 
         <TextInput
-          style={[
-            styles.input, 
-            { 
-              backgroundColor: colors.background,
-              color: colors.textPrimary,
-            }
-          ]}
+          style={[styles.input, { backgroundColor: colors.background, color: colors.textPrimary }]}
           value={newMessage}
           onChangeText={setNewMessage}
           placeholder="Ask about the item..."
@@ -392,207 +360,61 @@ export default function ChatDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  container: {
-    flex: 1,
-  },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  container: { flex: 1 },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 15,
-    paddingTop: 50,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 15, paddingTop: 50, paddingBottom: 15, borderBottomWidth: 1,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerCenter: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerAvatarText: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  headerName: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  headerStatus: {
-    fontSize: 12,
-  },
-  moreButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  messagesList: {
-    padding: 15,
-    paddingBottom: 5,
-    flexGrow: 1,
-  },
+  backButton: { width: 40, height: 40, justifyContent: "center", alignItems: "center" },
+  headerCenter: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+  headerAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
+  headerAvatarText: { fontSize: 16, fontWeight: "700" },
+  headerName: { fontSize: 16, fontWeight: "600" },
+  headerStatus: { fontSize: 12 },
+  moreButton: { width: 40, height: 40, justifyContent: "center", alignItems: "center" },
+  messagesList: { padding: 15, paddingBottom: 5, flexGrow: 1 },
   itemInfoCard: {
-    flexDirection: "row",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 20,
-    gap: 12,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    flexDirection: "row", borderRadius: 12, padding: 12,
+    marginBottom: 20, gap: 12, alignItems: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
-  itemImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-  },
-  itemInfo: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  itemTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 2,
-  },
-  itemSubtitle: {
-    fontSize: 12,
-  },
-  messageContainer: {
-    flexDirection: "row",
-    marginBottom: 15,
-    gap: 8,
-  },
-  myMessageContainer: {
-    justifyContent: "flex-end",
-  },
-  theirMessageContainer: {
-    justifyContent: "flex-start",
-  },
-  senderAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    alignSelf: "flex-end",
-  },
-  senderAvatarText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  messageBubble: {
-    maxWidth: "75%",
-    borderRadius: 16,
-    padding: 10,
-  },
-  myMessageBubble: {
-    borderBottomRightRadius: 4,
-  },
+  itemImage: { width: 50, height: 50, borderRadius: 8 },
+  itemInfo: { flex: 1, justifyContent: "center" },
+  itemTitle: { fontSize: 14, fontWeight: "600", marginBottom: 2 },
+  itemSubtitle: { fontSize: 12 },
+  messageContainer: { flexDirection: "row", marginBottom: 15, gap: 8 },
+  myMessageContainer: { justifyContent: "flex-end" },
+  theirMessageContainer: { justifyContent: "flex-start" },
+  senderAvatar: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center", alignSelf: "flex-end" },
+  senderAvatarText: { fontSize: 12, fontWeight: "700" },
+  messageBubble: { maxWidth: "75%", borderRadius: 16, padding: 10 },
+  myMessageBubble: { borderBottomRightRadius: 4 },
   theirMessageBubble: {
     borderBottomLeftRadius: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 2, elevation: 1,
   },
-  senderName: {
-    fontSize: 11,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  messageText: {
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  myMessageText: {},
-  theirMessageText: {},
-  messageFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 4,
-    marginTop: 4,
-  },
-  messageTime: {
-    fontSize: 10,
-  },
-  myMessageTime: {},
-  theirMessageTime: {},
-  emptyState: {
-    paddingVertical: 60,
-    alignItems: "center",
-    gap: 12,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: "center",
-  },
+  senderName: { fontSize: 11, fontWeight: "600", marginBottom: 4 },
+  messageText: { fontSize: 15, lineHeight: 20 },
+  messageFooter: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4, marginTop: 4 },
+  messageTime: { fontSize: 10 },
+  emptyState: { paddingVertical: 60, alignItems: "center", gap: 12 },
+  emptyTitle: { fontSize: 16, fontWeight: "600" },
+  emptyText: { fontSize: 14, textAlign: "center" },
   safetyReminder: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: "row", alignItems: "center",
     backgroundColor: "rgba(255, 152, 0, 0.1)",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    gap: 8,
+    paddingHorizontal: 15, paddingVertical: 10, gap: 8,
   },
-  safetyText: {
-    flex: 1,
-    fontSize: 11,
-  },
+  safetyText: { flex: 1, fontSize: 11 },
   inputContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    gap: 10,
+    flexDirection: "row", alignItems: "flex-end",
+    paddingHorizontal: 15, paddingVertical: 10, borderTopWidth: 1, gap: 10,
   },
-  attachButton: {
-    marginBottom: 5,
-  },
-  input: {
-    flex: 1,
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    fontSize: 15,
-    maxHeight: 100,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
+  attachButton: { marginBottom: 5 },
+  input: { flex: 1, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, fontSize: 15, maxHeight: 100 },
+  sendButton: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
+  sendButtonDisabled: { opacity: 0.5 },
 });

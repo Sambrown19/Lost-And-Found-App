@@ -4,6 +4,8 @@ import {
   DATABASE_ID,
   databases,
   USERS_COLLECTION_ID,
+   storage,
+   STORAGE_BUCKET_ID,
 } from "../config/appwrite";
 
 export interface UserProfile {
@@ -62,6 +64,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
   return null;
 };
 
+
 export const updateUserProfile = async (data: Partial<UserProfile>) => {
   try {
     const profile = await getUserProfile();
@@ -86,23 +89,40 @@ export const updateUserProfile = async (data: Partial<UserProfile>) => {
 
 export const uploadProfileImage = async (imageUri: string) => {
   try {
-    console.log("Saving profile image URI:", imageUri);
-    return imageUri;
+    const user = await account.get();
+    
+    const file = {
+      uri: imageUri,
+      name: `profile_${user.$id}_${Date.now()}.jpg`,
+      type: 'image/jpeg',
+      size: 0,
+    };
+    
+    const result = await storage.createFile(
+      STORAGE_BUCKET_ID,
+      ID.unique(),
+      file
+    );
+    
+    // ✅ Build URL manually - this always works
+    const endpoint = process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT;
+    const projectId = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID;
+    const bucketId = STORAGE_BUCKET_ID;
+    const fileId = result.$id;
+    
+    const urlString = `${endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${projectId}`;
+    
+    console.log("Uploaded URL:", urlString);
+    return urlString;
   } catch (error) {
-    console.error("Upload image error:", error);
+    console.error("Upload error:", error);
     throw error;
   }
 };
-
 export const getInitials = (name: string): string => {
   if (!name) return "";
-
-  const names = name
-    .trim()
-    .split(" ")
-    .filter((n) => n.length > 0);
+  const names = name.trim().split(" ").filter(n => n.length > 0);
   if (names.length === 0) return "";
   if (names.length === 1) return names[0].substring(0, 2).toUpperCase();
-
-  return names.map((n) => n[0].toUpperCase()).join("");
+  return names.map(n => n[0].toUpperCase()).join("");
 };

@@ -100,38 +100,48 @@ export const getOrCreateConversation = async (
   try {
     const user = await account.get();
 
-    // Create participants array (sorted for consistency)
-    const participants = [user.$id, otherUserId].sort();
+    if (user.$id === otherUserId) {
+      throw new Error("You cannot start a conversation with yourself.");
+    }
 
-    // Check if conversation exists by querying
+    // Sort participants for consistency
+    const unsorted = [
+      { id: user.$id, name: user.name },
+      { id: otherUserId, name: otherUserName },
+    ];
+    const sorted = unsorted.sort((a, b) => a.id.localeCompare(b.id));
+
+    const participants = sorted.map((p) => p.id);
+    const participantNames = sorted.map((p) => p.name).join(",");
+
+    // Check if conversation exists for this specific item
+    const queries = [
+      Query.contains("participants", participants[0]),
+      Query.contains("participants", participants[1]),
+      Query.limit(10),
+    ];
+
+    if (itemId) {
+      queries.push(Query.equal("itemId", itemId));
+    }
+
     const existingConversations = await databases.listDocuments(
       DATABASE_ID,
       CONVERSATIONS_COLLECTION_ID,
-      [
-        Query.contains("participants", participants[0]),
-        Query.contains("participants", participants[1]),
-        Query.limit(1),
-      ],
+      queries,
     );
 
     if (existingConversations.documents.length > 0) {
-      console.log(
-        "Found existing conversation:",
-        existingConversations.documents[0].$id,
-      );
       return existingConversations.documents[0];
     }
-
-    // Create new conversation with auto-generated ID
-    const participantNames = `${user.name},${otherUserName}`;
 
     const conversation = await databases.createDocument(
       DATABASE_ID,
       CONVERSATIONS_COLLECTION_ID,
-      ID.unique(), // Use auto-generated ID
+      ID.unique(),
       {
-        participants: participants, // Keep as array
-        participantNames: participantNames,
+        participants,
+        participantNames,
         itemId: itemId || "",
         itemTitle: itemTitle || "",
         itemImage: itemImage || "",
@@ -141,7 +151,6 @@ export const getOrCreateConversation = async (
       },
     );
 
-    console.log("Created new conversation:", conversation.$id);
     return conversation;
   } catch (error) {
     console.error("Get/Create conversation error:", error);
