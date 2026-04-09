@@ -1,6 +1,7 @@
 // app/(auth)/signup.tsx
 
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -16,9 +17,9 @@ import {
 } from "react-native";
 import { ID } from "react-native-appwrite";
 import { account } from "../../config/appwrite";
-import Colors from "../../constants/Colors";
 
 export default function SignUpScreen() {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -90,12 +91,6 @@ export default function SignUpScreen() {
       await account.createEmailPasswordSession(email.toLowerCase(), password);
       console.log("Session created");
 
-      // // Now createVerification will work
-      // await account.createVerification(
-      //   "https://fra.cloud.appwrite.io/email-verified",
-      // );
-      // console.log("Verification email sent");
-
       router.replace("/(auth)/complete-profile");
     } catch (error: any) {
       console.error("Sign up error:", error);
@@ -113,7 +108,7 @@ export default function SignUpScreen() {
       } else if (error.code === 400) {
         Alert.alert(
           "Invalid Input",
-          error.messag || "Please check your email and password and try again.",
+          error.message || "Please check your email and password and try again.",
         );
       } else {
         Alert.alert(
@@ -127,7 +122,11 @@ export default function SignUpScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <ScrollView 
+      style={[styles.scrollView, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.container}>
         <View style={styles.logoContainer}>
           <Image
@@ -138,19 +137,26 @@ export default function SignUpScreen() {
         </View>
 
         <View style={styles.header}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>
-            Fill in the form to create your account, Get started with your
-            journey
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Create Account</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            Fill in the form to create your account. Get started with your journey
           </Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Student Email</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Student Email</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.white,
+                  borderColor: colors.border,
+                  color: colors.textPrimary,
+                },
+              ]}
               placeholder="youremail@pentvars.edu.gh"
+              placeholderTextColor={colors.textLight}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -160,11 +166,20 @@ export default function SignUpScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Create Password</Text>
-            <View style={styles.passwordContainer}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Create Password</Text>
+            <View
+              style={[
+                styles.passwordContainer,
+                {
+                  backgroundColor: colors.white,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
               <TextInput
-                style={styles.passwordInput}
+                style={[styles.passwordInput, { color: colors.textPrimary }]}
                 placeholder="Min. 8 characters"
+                placeholderTextColor={colors.textLight}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -178,18 +193,27 @@ export default function SignUpScreen() {
                 <Ionicons
                   name={showPassword ? "eye-off-outline" : "eye-outline"}
                   size={20}
-                  color={Colors.textLight}
+                  color={colors.textLight}
                 />
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Confirm Password</Text>
-            <View style={styles.passwordContainer}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Confirm Password</Text>
+            <View
+              style={[
+                styles.passwordContainer,
+                {
+                  backgroundColor: colors.white,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
               <TextInput
-                style={styles.passwordInput}
+                style={[styles.passwordInput, { color: colors.textPrimary }]}
                 placeholder="Re-enter password"
+                placeholderTextColor={colors.textLight}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirmPassword}
@@ -203,29 +227,33 @@ export default function SignUpScreen() {
                 <Ionicons
                   name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
                   size={20}
-                  color={Colors.textLight}
+                  color={colors.textLight}
                 />
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.termsContainer}>
-            <Text style={styles.termsText}>
+            <Text style={[styles.termsText, { color: colors.textSecondary }]}>
               By creating an account you agree to our{" "}
-              <Text style={styles.termsLink}>Terms of Service</Text> and{" "}
-              <Text style={styles.termsLink}>Privacy Policy</Text>
+              <Text style={[styles.termsLink, { color: colors.primary }]}>Terms of Service</Text> and{" "}
+              <Text style={[styles.termsLink, { color: colors.primary }]}>Privacy Policy</Text>
             </Text>
           </View>
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[
+              styles.button,
+              { backgroundColor: colors.primary },
+              loading && styles.buttonDisabled,
+            ]}
             onPress={handleSignUp}
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color={Colors.white} />
+              <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.buttonText}>Continue</Text>
+              <Text style={[styles.buttonText, { color: colors.white }]}>Continue</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -235,16 +263,17 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
-  background: {
+  scrollView: {
     flex: 1,
   },
-  scrollContainer: {
+  scrollContent: {
     flexGrow: 1,
   },
   container: {
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 60,
+    paddingBottom: 40,
   },
   logoContainer: {
     alignItems: "flex-start",
@@ -260,12 +289,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700",
-    color: Colors.textPrimary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
     lineHeight: 20,
   },
   form: {
@@ -276,14 +303,11 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: Colors.textPrimary,
     marginBottom: 8,
     fontWeight: "500",
   },
   input: {
-    backgroundColor: Colors.white,
     borderWidth: 1,
-    borderColor: Colors.border,
     borderRadius: 8,
     paddingHorizontal: 15,
     paddingVertical: 12,
@@ -292,9 +316,7 @@ const styles = StyleSheet.create({
   passwordContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.white,
     borderWidth: 1,
-    borderColor: Colors.border,
     borderRadius: 8,
   },
   passwordInput: {
@@ -311,15 +333,12 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: 12,
-    color: Colors.textSecondary,
     lineHeight: 18,
   },
   termsLink: {
-    color: Colors.primary,
     fontWeight: "600",
   },
   button: {
-    backgroundColor: Colors.primary,
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: "center",
@@ -328,26 +347,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: Colors.white,
     fontSize: 16,
     fontWeight: "600",
-  },
-  pagination: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#D0D0D0",
-    marginHorizontal: 5,
-  },
-  activeDot: {
-    width: 24,
-    backgroundColor: Colors.primary,
   },
 });

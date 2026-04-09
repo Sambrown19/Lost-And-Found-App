@@ -1,12 +1,19 @@
 import React from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { SkeletonBase, SkeletonLine, SkeletonCircle } from "./SkeletonBase";
-import Colors from "../../constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function HomeScreenSkeleton() {
+  const { colors } = useTheme();
+  
   return (
     <SkeletonBase style={styles.container}>
-      <View style={styles.header}>
+      <View style={[
+        styles.header, 
+        { 
+          backgroundColor: colors.white,
+        }
+      ]}>
         <View style={styles.headerLeft}>
           <SkeletonCircle size={50} />
           <View>
@@ -18,19 +25,37 @@ export default function HomeScreenSkeleton() {
       </View>
 
       <View style={styles.searchWrapper}>
-        <View style={styles.searchContainer}>
+        <View style={[
+          styles.searchContainer, 
+          { 
+            backgroundColor: colors.white,
+            borderColor: colors.border,
+          }
+        ]}>
           <SkeletonLine width={20} height={20} borderRadius={10} />
           <SkeletonLine width="80%" height={20} />
         </View>
       </View>
 
       <View style={styles.reportButtons}>
-        <View style={styles.reportButton}>
+        <View style={[
+          styles.reportButton, 
+          { 
+            backgroundColor: colors.white,
+            borderColor: colors.border,
+          }
+        ]}>
           <SkeletonCircle size={45} />
           <SkeletonLine width={100} height={16} style={styles.mt2} />
           <SkeletonLine width={80} height={12} style={styles.mt1} />
         </View>
-        <View style={styles.reportButton}>
+        <View style={[
+          styles.reportButton, 
+          { 
+            backgroundColor: colors.white,
+            borderColor: colors.border,
+          }
+        ]}>
           <SkeletonCircle size={45} />
           <SkeletonLine width={100} height={16} style={styles.mt2} />
           <SkeletonLine width={80} height={12} style={styles.mt1} />
@@ -45,7 +70,7 @@ export default function HomeScreenSkeleton() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {[1, 2, 3, 4, 5].map((_, index) => (
-          <View key={index} style={styles.itemCard}>
+          <View key={index} style={[styles.itemCard, { backgroundColor: colors.white }]}>
             <SkeletonLine width="100%" height={180} borderRadius={12} />
             <View style={styles.cardContent}>
               <SkeletonLine width="80%" height={20} style={styles.mb2} />
@@ -73,7 +98,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 20,
-    backgroundColor: Colors.white,
   },
   headerLeft: {
     flexDirection: "row",
@@ -87,13 +111,11 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.white,
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderRadius: 10,
     gap: 10,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   reportButtons: {
     flexDirection: "row",
@@ -103,11 +125,9 @@ const styles = StyleSheet.create({
   },
   reportButton: {
     flex: 1,
-    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 15,
     borderWidth: 1,
-    borderColor: Colors.border,
     alignItems: "center",
   },
   tabsContainer: {
@@ -123,7 +143,6 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     marginBottom: 16,
-    backgroundColor: Colors.white,
     borderRadius: 12,
     overflow: "hidden",
   },

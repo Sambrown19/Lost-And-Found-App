@@ -1,6 +1,6 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
-import Colors from "../../constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 
 interface SkeletonBaseProps {
   children: React.ReactNode;
@@ -11,7 +11,9 @@ export const SkeletonBase: React.FC<SkeletonBaseProps> = ({
   children,
   style,
 }) => {
-  return <View style={[styles.container, style]}>{children}</View>;
+  const { colors } = useTheme();
+  
+  return <View style={[styles.container, { backgroundColor: colors.background }, style]}>{children}</View>;
 };
 
 export const SkeletonLine: React.FC<{
@@ -20,18 +22,22 @@ export const SkeletonLine: React.FC<{
   borderRadius?: number;
   style?: any;
 }> = ({ width = "100%", height = 16, borderRadius = 8, style }) => {
-  return <View style={[styles.line, { width, height, borderRadius }, style]} />;
+  const { colors } = useTheme();
+  
+  return <View style={[styles.line, { width, height, borderRadius, backgroundColor: colors.border }, style]} />;
 };
 
 export const SkeletonCircle: React.FC<{
   size?: number;
   style?: any;
 }> = ({ size = 50, style }) => {
+  const { colors } = useTheme();
+  
   return (
     <View
       style={[
         styles.circle,
-        { width: size, height: size, borderRadius: size / 2 },
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.border },
         style,
       ]}
     />
@@ -40,12 +46,12 @@ export const SkeletonCircle: React.FC<{
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.background,
+    flex: 1,
   },
   line: {
-    backgroundColor: "#e1e9ee",
+    // backgroundColor handled inline
   },
   circle: {
-    backgroundColor: "#e1e9ee",
+    // backgroundColor handled inline
   },
 });

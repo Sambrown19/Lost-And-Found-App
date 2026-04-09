@@ -1,43 +1,57 @@
 import React from "react";
 import { View, StyleSheet, FlatList } from "react-native";
 import { SkeletonBase, SkeletonLine, SkeletonCircle } from "./SkeletonBase";
-import Colors from "../../constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 
 const MessageSkeleton = ({
   isMyMessage = false,
 }: {
   isMyMessage?: boolean;
-}) => (
-  <View
-    style={[
-      styles.messageContainer,
-      isMyMessage ? styles.myMessage : styles.theirMessage,
-    ]}
-  >
-    {!isMyMessage && <SkeletonCircle size={32} />}
+}) => {
+  const { colors } = useTheme();
+  
+  return (
     <View
       style={[
-        styles.messageBubble,
-        isMyMessage ? styles.myBubble : styles.theirBubble,
+        styles.messageContainer,
+        isMyMessage ? styles.myMessage : styles.theirMessage,
       ]}
     >
-      {!isMyMessage && (
-        <SkeletonLine width={80} height={12} style={styles.mb1} />
-      )}
-      <SkeletonLine width={180} height={16} style={styles.mb1} />
-      <SkeletonLine width={120} height={14} />
-      <View style={styles.messageFooter}>
-        <SkeletonLine width={40} height={10} />
+      {!isMyMessage && <SkeletonCircle size={32} />}
+      <View
+        style={[
+          styles.messageBubble,
+          isMyMessage 
+            ? [styles.myBubble, { backgroundColor: colors.border }]
+            : [styles.theirBubble, { backgroundColor: colors.border }],
+        ]}
+      >
+        {!isMyMessage && (
+          <SkeletonLine width={80} height={12} style={styles.mb1} />
+        )}
+        <SkeletonLine width={180} height={16} style={styles.mb1} />
+        <SkeletonLine width={120} height={14} />
+        <View style={styles.messageFooter}>
+          <SkeletonLine width={40} height={10} />
+        </View>
       </View>
     </View>
-  </View>
-);
+  );
+};
 
 export default function ChatSkeleton() {
+  const { colors } = useTheme();
+  
   return (
     <SkeletonBase style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.backButtonSkeleton} />
+      <View style={[
+        styles.header, 
+        { 
+          backgroundColor: colors.white,
+          borderBottomColor: colors.border 
+        }
+      ]}>
+        <View style={[styles.backButtonSkeleton, { backgroundColor: colors.border }]} />
         <View style={styles.headerInfo}>
           <SkeletonCircle size={40} />
           <View>
@@ -56,15 +70,24 @@ export default function ChatSkeleton() {
         contentContainerStyle={styles.messagesList}
       />
 
-      <View style={styles.safetyReminder}>
-        <View style={styles.safetyIcon} />
+      <View style={[
+        styles.safetyReminder, 
+        { backgroundColor: "rgba(255, 152, 0, 0.1)" }
+      ]}>
+        <View style={[styles.safetyIcon, { backgroundColor: colors.border }]} />
         <SkeletonLine width="85%" height={12} />
       </View>
 
-      <View style={styles.inputContainer}>
-        <View style={styles.attachButtonSkeleton} />
+      <View style={[
+        styles.inputContainer, 
+        { 
+          backgroundColor: colors.white,
+          borderTopColor: colors.border 
+        }
+      ]}>
+        <View style={[styles.attachButtonSkeleton, { backgroundColor: colors.border }]} />
         <SkeletonLine width="70%" height={40} borderRadius={20} />
-        <View style={styles.sendButtonSkeleton} />
+        <View style={[styles.sendButtonSkeleton, { backgroundColor: colors.border }]} />
       </View>
     </SkeletonBase>
   );
@@ -80,16 +103,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingTop: 50,
     paddingBottom: 15,
-    backgroundColor: Colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
     gap: 10,
   },
   backButtonSkeleton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#e1e9ee",
   },
   headerInfo: {
     flex: 1,
@@ -118,11 +138,9 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   myBubble: {
-    backgroundColor: "#e1e9ee",
     borderBottomRightRadius: 4,
   },
   theirBubble: {
-    backgroundColor: "#e8e8e8",
     borderBottomLeftRadius: 4,
   },
   messageFooter: {
@@ -133,7 +151,6 @@ const styles = StyleSheet.create({
   safetyReminder: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 152, 0, 0.1)",
     paddingHorizontal: 15,
     paddingVertical: 10,
     gap: 8,
@@ -142,29 +159,24 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#e1e9ee",
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 15,
     paddingVertical: 10,
-    backgroundColor: Colors.white,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
     gap: 10,
   },
   attachButtonSkeleton: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#e1e9ee",
   },
   sendButtonSkeleton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#e1e9ee",
   },
   mb1: {
     marginBottom: 4,

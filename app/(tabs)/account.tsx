@@ -19,7 +19,7 @@ import { getInitials, getUserProfile } from '../../services/userService';
 
 export default function AccountScreen() {
   const router = useRouter();
-  const { colors, isDark, toggleTheme } = useTheme();
+  const { colors, isDark } = useTheme();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -150,7 +150,7 @@ export default function AccountScreen() {
             <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
           </TouchableOpacity>
 
-          {/* Theme Toggle */}
+          {/* System Theme Indicator */}
           <View style={styles.menuItem}>
             <View style={[styles.menuIconContainer, { backgroundColor: colors.gray }]}>
               <Ionicons
@@ -164,12 +164,12 @@ export default function AccountScreen() {
                 Dark Mode
               </Text>
               <Text style={[styles.menuSubtext, { color: colors.textSecondary }]}>
-                {isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                Follows your system settings
               </Text>
             </View>
             <Switch
               value={isDark}
-              onValueChange={toggleTheme}
+              disabled={true}
               trackColor={{ false: '#D0D0D0', true: colors.primary }}
               thumbColor={colors.white}
             />

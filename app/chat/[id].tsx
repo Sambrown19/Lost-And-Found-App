@@ -1,6 +1,7 @@
 // app/chat/[id].tsx
 
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/context/ThemeContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -17,7 +18,6 @@ import {
   Alert,
 } from "react-native";
 import { account } from "../../config/appwrite";
-import Colors from "../../constants/Colors";
 import {
   getConversationMessages,
   markMessagesAsRead,
@@ -35,6 +35,7 @@ const getInitials = (name: string) => {
 };
 
 export default function ChatDetailScreen() {
+  const { colors, isDark } = useTheme();
   const { id, otherUserId, otherUserName, itemId, itemTitle, itemImage } =
     useLocalSearchParams();
   const router = useRouter();
@@ -159,8 +160,8 @@ export default function ChatDetailScreen() {
         ]}
       >
         {!isMyMessage && (
-          <View style={styles.senderAvatar}>
-            <Text style={styles.senderAvatarText}>
+          <View style={[styles.senderAvatar, { backgroundColor: colors.primary }]}>
+            <Text style={[styles.senderAvatarText, { color: colors.white }]}>
               {getInitials(item.senderName)}
             </Text>
           </View>
@@ -169,16 +170,22 @@ export default function ChatDetailScreen() {
         <View
           style={[
             styles.messageBubble,
-            isMyMessage ? styles.myMessageBubble : styles.theirMessageBubble,
+            isMyMessage 
+              ? [styles.myMessageBubble, { backgroundColor: colors.primary }]
+              : [styles.theirMessageBubble, { backgroundColor: colors.white }],
           ]}
         >
           {!isMyMessage && (
-            <Text style={styles.senderName}>{item.senderName}</Text>
+            <Text style={[styles.senderName, { color: colors.textSecondary }]}>
+              {item.senderName}
+            </Text>
           )}
           <Text
             style={[
               styles.messageText,
-              isMyMessage ? styles.myMessageText : styles.theirMessageText,
+              isMyMessage 
+                ? [styles.myMessageText, { color: colors.white }]
+                : [styles.theirMessageText, { color: colors.textPrimary }],
             ]}
           >
             {item.message}
@@ -187,7 +194,9 @@ export default function ChatDetailScreen() {
             <Text
               style={[
                 styles.messageTime,
-                isMyMessage ? styles.myMessageTime : styles.theirMessageTime,
+                isMyMessage 
+                  ? [styles.myMessageTime, { color: "rgba(255, 255, 255, 0.7)" }]
+                  : [styles.theirMessageTime, { color: colors.textLight }],
               ]}
             >
               {formatTime(item.createdAt)}
@@ -217,7 +226,10 @@ export default function ChatDetailScreen() {
 
     return (
       <TouchableOpacity
-        style={styles.itemInfoCard}
+        style={[
+          styles.itemInfoCard,
+          { backgroundColor: colors.white },
+        ]}
         onPress={() => {
           if (itemId) {
             router.push(`/item/${itemId}`);
@@ -228,54 +240,60 @@ export default function ChatDetailScreen() {
           <Image source={{ uri: imageUrl }} style={styles.itemImage} />
         )}
         <View style={styles.itemInfo}>
-          <Text style={styles.itemTitle} numberOfLines={1}>
+          <Text style={[styles.itemTitle, { color: colors.textPrimary }]} numberOfLines={1}>
             {itemTitle}
           </Text>
-          <Text style={styles.itemSubtitle}>Lost Item</Text>
+          <Text style={[styles.itemSubtitle, { color: colors.textSecondary }]}>Lost Item</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
+        <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
       </TouchableOpacity>
     );
   };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
-      <View style={styles.header}>
+      <View style={[
+        styles.header, 
+        { 
+          backgroundColor: colors.white,
+          borderBottomColor: colors.border,
+        }
+      ]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.push("/messages")}
         >
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.headerCenter}
           onPress={() => {
             if (otherUserId) {
-              router.push(`/profile/${otherUserId}`);
+              router.push(`/profile/${otherUserId}` as any);
             }
           }}
         >
-          <View style={styles.headerAvatar}>
-            <Text style={styles.headerAvatarText}>
+          <View style={[styles.headerAvatar, { backgroundColor: colors.primary }]}>
+            <Text style={[styles.headerAvatarText, { color: colors.white }]}>
               {getInitials(otherUserName as string)}
             </Text>
           </View>
           <View>
-            <Text style={styles.headerName}>{otherUserName}</Text>
-            <Text style={styles.headerStatus}>Online</Text>
+            <Text style={[styles.headerName, { color: colors.textPrimary }]}>{otherUserName}</Text>
+            <Text style={[styles.headerStatus, { color: "#4CAF50" }]}>Online</Text>
           </View>
         </TouchableOpacity>
 
@@ -283,7 +301,7 @@ export default function ChatDetailScreen() {
           <Ionicons
             name="ellipsis-vertical"
             size={20}
-            color={Colors.textPrimary}
+            color={colors.textPrimary}
           />
         </TouchableOpacity>
       </View>
@@ -304,10 +322,10 @@ export default function ChatDetailScreen() {
             <Ionicons
               name="chatbubble-outline"
               size={50}
-              color={Colors.textLight}
+              color={colors.textLight}
             />
-            <Text style={styles.emptyTitle}>No messages yet</Text>
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No messages yet</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               Start the conversation by sending a message
             </Text>
           </View>
@@ -316,25 +334,38 @@ export default function ChatDetailScreen() {
 
       <View style={styles.safetyReminder}>
         <Ionicons name="warning-outline" size={16} color="#FF9800" />
-        <Text style={styles.safetyText}>
+        <Text style={[styles.safetyText, { color: colors.textSecondary }]}>
           Keep all communications in-app until ownership is verified
         </Text>
       </View>
 
-      <View style={styles.inputContainer}>
+      <View style={[
+        styles.inputContainer, 
+        { 
+          backgroundColor: colors.white,
+          borderTopColor: colors.border,
+        }
+      ]}>
         <TouchableOpacity style={styles.attachButton}>
           <Ionicons
             name="add-circle-outline"
             size={28}
-            color={Colors.primary}
+            color={colors.primary}
           />
         </TouchableOpacity>
 
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input, 
+            { 
+              backgroundColor: colors.background,
+              color: colors.textPrimary,
+            }
+          ]}
           value={newMessage}
           onChangeText={setNewMessage}
           placeholder="Ask about the item..."
+          placeholderTextColor={colors.textLight}
           multiline
           maxLength={500}
           editable={!sending}
@@ -343,15 +374,16 @@ export default function ChatDetailScreen() {
         <TouchableOpacity
           style={[
             styles.sendButton,
+            { backgroundColor: colors.primary },
             (!newMessage.trim() || sending) && styles.sendButtonDisabled,
           ]}
           onPress={handleSend}
           disabled={sending || !newMessage.trim()}
         >
           {sending ? (
-            <ActivityIndicator size="small" color={Colors.white} />
+            <ActivityIndicator size="small" color={colors.white} />
           ) : (
-            <Ionicons name="send" size={20} color={Colors.white} />
+            <Ionicons name="send" size={20} color={colors.white} />
           )}
         </TouchableOpacity>
       </View>
@@ -364,11 +396,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: "row",
@@ -376,9 +406,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingTop: 50,
     paddingBottom: 15,
-    backgroundColor: Colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
   backButton: {
     width: 40,
@@ -396,23 +424,19 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
   },
   headerAvatarText: {
     fontSize: 16,
     fontWeight: "700",
-    color: Colors.white,
   },
   headerName: {
     fontSize: 16,
     fontWeight: "600",
-    color: Colors.textPrimary,
   },
   headerStatus: {
     fontSize: 12,
-    color: "#4CAF50",
   },
   moreButton: {
     width: 40,
@@ -427,7 +451,6 @@ const styles = StyleSheet.create({
   },
   itemInfoCard: {
     flexDirection: "row",
-    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 12,
     marginBottom: 20,
@@ -451,12 +474,10 @@ const styles = StyleSheet.create({
   itemTitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: Colors.textPrimary,
     marginBottom: 2,
   },
   itemSubtitle: {
     fontSize: 12,
-    color: Colors.textSecondary,
   },
   messageContainer: {
     flexDirection: "row",
@@ -473,7 +494,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
     alignSelf: "flex-end",
@@ -481,7 +501,6 @@ const styles = StyleSheet.create({
   senderAvatarText: {
     fontSize: 12,
     fontWeight: "700",
-    color: Colors.white,
   },
   messageBubble: {
     maxWidth: "75%",
@@ -489,11 +508,9 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   myMessageBubble: {
-    backgroundColor: Colors.primary,
     borderBottomRightRadius: 4,
   },
   theirMessageBubble: {
-    backgroundColor: Colors.white,
     borderBottomLeftRadius: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -504,19 +521,14 @@ const styles = StyleSheet.create({
   senderName: {
     fontSize: 11,
     fontWeight: "600",
-    color: Colors.textSecondary,
     marginBottom: 4,
   },
   messageText: {
     fontSize: 15,
     lineHeight: 20,
   },
-  myMessageText: {
-    color: Colors.white,
-  },
-  theirMessageText: {
-    color: Colors.textPrimary,
-  },
+  myMessageText: {},
+  theirMessageText: {},
   messageFooter: {
     flexDirection: "row",
     alignItems: "center",
@@ -527,12 +539,8 @@ const styles = StyleSheet.create({
   messageTime: {
     fontSize: 10,
   },
-  myMessageTime: {
-    color: "rgba(255, 255, 255, 0.7)",
-  },
-  theirMessageTime: {
-    color: Colors.textLight,
-  },
+  myMessageTime: {},
+  theirMessageTime: {},
   emptyState: {
     paddingVertical: 60,
     alignItems: "center",
@@ -541,11 +549,9 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: Colors.textPrimary,
   },
   emptyText: {
     fontSize: 14,
-    color: Colors.textSecondary,
     textAlign: "center",
   },
   safetyReminder: {
@@ -559,16 +565,13 @@ const styles = StyleSheet.create({
   safetyText: {
     flex: 1,
     fontSize: 11,
-    color: Colors.textSecondary,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
     paddingHorizontal: 15,
     paddingVertical: 10,
-    backgroundColor: Colors.white,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
     gap: 10,
   },
   attachButton: {
@@ -576,7 +579,6 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: Colors.background,
     borderRadius: 20,
     paddingHorizontal: 15,
     paddingVertical: 10,
@@ -587,7 +589,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
   },

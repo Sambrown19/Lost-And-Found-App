@@ -1,6 +1,7 @@
 // app/(auth)/login.tsx
 
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -15,9 +16,9 @@ import {
   View,
 } from "react-native";
 import { account } from "../../config/appwrite";
-import Colors from "../../constants/Colors";
 
 export default function LoginScreen() {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -55,13 +56,15 @@ export default function LoginScreen() {
 
       await account.createEmailPasswordSession(email.toLowerCase(), password);
 
+      /*
       const user = await account.get();
 
       if (!user.emailVerification) {
         alert("Please verify your email!");
         return;
       }
-
+      */
+     
       console.log("Login successful");
 
       // Use replace with a slight delay to ensure proper navigation
@@ -91,8 +94,13 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
+
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <ScrollView 
+      style={[styles.scrollView, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.container}>
         {/* Logo */}
         <View style={styles.logoContainer}>
@@ -105,8 +113,8 @@ export default function LoginScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Welcome Back</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Fill in the details to log in to your account
           </Text>
         </View>
@@ -115,10 +123,18 @@ export default function LoginScreen() {
         <View style={styles.form}>
           {/* Email Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Student Email</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Student Email</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.white,
+                  borderColor: colors.border,
+                  color: colors.textPrimary,
+                },
+              ]}
               placeholder="youremail@pentvars.edu.gh"
+              placeholderTextColor={colors.textLight}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -129,11 +145,20 @@ export default function LoginScreen() {
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.passwordContainer}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Password</Text>
+            <View
+              style={[
+                styles.passwordContainer,
+                {
+                  backgroundColor: colors.white,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
               <TextInput
-                style={styles.passwordInput}
+                style={[styles.passwordInput, { color: colors.textPrimary }]}
                 placeholder="Enter your password"
+                placeholderTextColor={colors.textLight}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -147,7 +172,7 @@ export default function LoginScreen() {
                 <Ionicons
                   name={showPassword ? "eye-off-outline" : "eye-outline"}
                   size={20}
-                  color={Colors.textLight}
+                  color={colors.textLight}
                 />
               </TouchableOpacity>
             </View>
@@ -155,22 +180,26 @@ export default function LoginScreen() {
 
           {/* Login Button */}
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[
+              styles.button,
+              { backgroundColor: colors.primary },
+              loading && styles.buttonDisabled,
+            ]}
             onPress={handleLogin}
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color={Colors.white} />
+              <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.buttonText}>Login</Text>
+              <Text style={[styles.buttonText, { color: colors.white }]}>Login</Text>
             )}
           </TouchableOpacity>
 
           {/* Divider */}
           <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>Or continue with</Text>
-            <View style={styles.dividerLine} />
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.dividerText, { color: colors.textLight }]}>Or continue with</Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
           {/* Sign Up Link */}
@@ -179,9 +208,9 @@ export default function LoginScreen() {
             style={styles.signupLink}
             disabled={loading}
           >
-            <Text style={styles.signupText}>
+            <Text style={[styles.signupText, { color: colors.textSecondary }]}>
               Don't have an account?{" "}
-              <Text style={styles.signupTextBold}>Sign Up</Text>
+              <Text style={[styles.signupTextBold, { color: colors.primary }]}>Sign Up</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -191,16 +220,17 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  background: {
+  scrollView: {
     flex: 1,
   },
-  scrollContainer: {
+  scrollContent: {
     flexGrow: 1,
   },
   container: {
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 60,
+    paddingBottom: 40,
   },
   logoContainer: {
     alignItems: "flex-start",
@@ -216,12 +246,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700",
-    color: Colors.textPrimary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
     lineHeight: 20,
   },
   form: {
@@ -232,14 +260,11 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: Colors.textPrimary,
     marginBottom: 8,
     fontWeight: "500",
   },
   input: {
-    backgroundColor: Colors.white,
     borderWidth: 1,
-    borderColor: Colors.border,
     borderRadius: 8,
     paddingHorizontal: 15,
     paddingVertical: 12,
@@ -248,9 +273,7 @@ const styles = StyleSheet.create({
   passwordContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.white,
     borderWidth: 1,
-    borderColor: Colors.border,
     borderRadius: 8,
   },
   passwordInput: {
@@ -263,7 +286,6 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   button: {
-    backgroundColor: Colors.primary,
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: "center",
@@ -273,7 +295,6 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: Colors.white,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -285,40 +306,18 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: Colors.border,
   },
   dividerText: {
     marginHorizontal: 10,
     fontSize: 14,
-    color: Colors.textLight,
   },
   signupLink: {
     alignItems: "center",
   },
   signupText: {
     fontSize: 14,
-    color: Colors.textSecondary,
   },
   signupTextBold: {
     fontWeight: "700",
-    color: Colors.primary,
-  },
-  pagination: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#D0D0D0",
-    marginHorizontal: 5,
-  },
-  activeDot: {
-    width: 24,
-    backgroundColor: Colors.primary,
   },
 });

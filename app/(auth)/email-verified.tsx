@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/context/ThemeContext";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -9,7 +10,6 @@ import {
   View,
   ActivityIndicator,
 } from "react-native";
-import Colors from "../../constants/Colors";
 import {
   account,
   DATABASE_ID,
@@ -18,6 +18,7 @@ import {
 } from "../../config/appwrite";
 
 export default function EmailVerifiedScreen() {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
   const [verifying, setVerifying] = useState(true);
@@ -70,14 +71,11 @@ export default function EmailVerifiedScreen() {
 
   if (verifying) {
     return (
-      <View style={styles.container}>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={Colors.background}
-        />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Verifying your email...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Verifying your email...</Text>
         </View>
       </View>
     );
@@ -85,26 +83,23 @@ export default function EmailVerifiedScreen() {
 
   if (error) {
     return (
-      <View style={styles.container}>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={Colors.background}
-        />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
 
         <View style={styles.iconContainer}>
-          <View style={[styles.iconCircle, styles.errorCircle]}>
+          <View style={[styles.iconCircle, styles.errorCircle, { backgroundColor: "rgba(255, 82, 82, 0.1)" }]}>
             <Ionicons name="alert-circle" size={80} color="#FF5252" />
           </View>
         </View>
 
         <View style={styles.header}>
-          <Text style={styles.title}>Verification Failed</Text>
-          <Text style={styles.subtitle}>{error}</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Verification Failed</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{error}</Text>
         </View>
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button} onPress={handleContinue}>
-            <Text style={styles.buttonText}>Back to Login</Text>
+          <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={handleContinue}>
+            <Text style={[styles.buttonText, { color: colors.white }]}>Back to Login</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -112,26 +107,28 @@ export default function EmailVerifiedScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
 
       <View style={styles.iconContainer}>
-        <View style={styles.iconCircle}>
+        <View style={[styles.iconCircle, { backgroundColor: "rgba(76, 175, 80, 0.1)" }]}>
           <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
         </View>
       </View>
 
       <View style={styles.header}>
-        <Text style={styles.title}>Email Verified!</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Email Verified!</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Your email has been successfully verified.
         </Text>
-        <Text style={styles.subtitle}>You can now login to your account.</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          You can now login to your account.
+        </Text>
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={handleContinue}>
-          <Text style={styles.buttonText}>Go to Login</Text>
+        <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={handleContinue}>
+          <Text style={[styles.buttonText, { color: colors.white }]}>Go to Login</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -141,7 +138,6 @@ export default function EmailVerifiedScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
     paddingHorizontal: 20,
     justifyContent: "center",
   },
@@ -153,7 +149,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: Colors.textSecondary,
   },
   iconContainer: {
     alignItems: "center",
@@ -163,12 +158,11 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: "rgba(76, 175, 80, 0.1)",
     justifyContent: "center",
     alignItems: "center",
   },
   errorCircle: {
-    backgroundColor: "rgba(255, 82, 82, 0.1)",
+    // backgroundColor handled inline
   },
   header: {
     alignItems: "center",
@@ -177,12 +171,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700",
-    color: Colors.textPrimary,
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 8,
@@ -191,13 +183,11 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   button: {
-    backgroundColor: Colors.primary,
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: "center",
   },
   buttonText: {
-    color: Colors.white,
     fontSize: 16,
     fontWeight: "600",
   },

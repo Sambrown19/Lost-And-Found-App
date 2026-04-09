@@ -1,11 +1,13 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { SkeletonBase, SkeletonLine, SkeletonCircle } from "./SkeletonBase";
-import Colors from "../../constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function ProfileSkeleton() {
+  const { colors } = useTheme();
+  
   return (
-    <SkeletonBase style={styles.container}>
+    <SkeletonBase style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <SkeletonLine width={100} height={28} />
       </View>
@@ -24,7 +26,7 @@ export default function ProfileSkeleton() {
           <SkeletonLine width={40} height={24} style={styles.mb1} />
           <SkeletonLine width={60} height={14} />
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
         <View style={styles.statItem}>
           <SkeletonLine width={40} height={24} style={styles.mb1} />
           <SkeletonLine width={60} height={14} />
@@ -37,10 +39,10 @@ export default function ProfileSkeleton() {
 
       <View style={styles.menuContainer}>
         {[1, 2, 3, 4].map((item) => (
-          <View key={item} style={styles.menuItem}>
-            <View style={styles.menuIcon} />
+          <View key={item} style={[styles.menuItem, { borderBottomColor: colors.border }]}>
+            <View style={[styles.menuIcon, { backgroundColor: colors.border }]} />
             <SkeletonLine width="70%" height={16} />
-            <View style={styles.menuChevron} />
+            <View style={[styles.menuChevron, { backgroundColor: colors.border }]} />
           </View>
         ))}
       </View>
@@ -51,7 +53,6 @@ export default function ProfileSkeleton() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   header: {
     paddingTop: 60,
@@ -77,7 +78,6 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: Colors.border,
   },
   editButton: {
     paddingHorizontal: 20,
@@ -91,20 +91,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
     gap: 12,
   },
   menuIcon: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "#e1e9ee",
   },
   menuChevron: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#e1e9ee",
     marginLeft: "auto",
   },
   mb1: {

@@ -1,5 +1,6 @@
 // app/(onboarding)/onboarding.tsx
 
+import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
@@ -14,7 +15,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import Colors from '../../constants/Colors';
 
 const { width } = Dimensions.get('window');
 
@@ -40,6 +40,7 @@ const slides = [
 ];
 
 export default function OnboardingScreen() {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -65,13 +66,15 @@ export default function OnboardingScreen() {
   const renderSlide = ({ item }: { item: typeof slides[0] }) => (
     <View style={styles.slide}>
       <View style={styles.content}>
-        <Text style={styles.title}>{item.title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{item.title}</Text>
 
         <View style={styles.imageContainer}>
           <Image source={item.image} style={styles.image} resizeMode="contain" />
         </View>
 
-        <Text style={styles.description}>{item.description}</Text>
+        <Text style={[styles.description, { color: colors.textSecondary }]}>
+          {item.description}
+        </Text>
       </View>
     </View>
   );
@@ -82,9 +85,14 @@ export default function OnboardingScreen() {
       style={styles.background}
       resizeMode="cover"
     >
+      {/* Dark mode overlay */}
+      {isDark && (
+        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.85)' }]} />
+      )}
+      
       <View style={styles.container}>
         <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={[styles.skipText, { color: colors.textSecondary }]}>Skip</Text>
         </TouchableOpacity>
 
         <FlatList
@@ -106,14 +114,17 @@ export default function OnboardingScreen() {
                 key={index}
                 style={[
                   styles.dot,
-                  index === currentIndex && styles.activeDot,
+                  index === currentIndex && [styles.activeDot, { backgroundColor: colors.primary }],
                 ]}
               />
             ))}
           </View>
 
-          <TouchableOpacity style={styles.button} onPress={handleContinue}>
-            <Text style={styles.buttonText}>Continue</Text>
+          <TouchableOpacity 
+            style={[styles.button, { backgroundColor: colors.primary }]} 
+            onPress={handleContinue}
+          >
+            <Text style={[styles.buttonText, { color: colors.white }]}>Continue</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -124,6 +135,13 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   background: {
     flex: 1,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   container: {
     flex: 1,
@@ -136,7 +154,6 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 16,
-    color: Colors.textSecondary,
     fontWeight: '500',
   },
   slide: {
@@ -153,7 +170,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     textAlign: 'center',
-    color: Colors.textPrimary,
     marginBottom: 30,
   },
   imageContainer: {
@@ -168,7 +184,6 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 16,
     textAlign: 'center',
-    color: Colors.textSecondary,
     lineHeight: 24,
     paddingHorizontal: 10,
   },
@@ -191,16 +206,13 @@ const styles = StyleSheet.create({
   },
   activeDot: {
     width: 24,
-    backgroundColor: Colors.primary,
   },
   button: {
-    backgroundColor: Colors.primary,
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: 'center',
   },
   buttonText: {
-    color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
   },

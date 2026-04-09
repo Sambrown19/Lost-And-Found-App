@@ -1,5 +1,6 @@
 // app/index.tsx
 
+import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -12,9 +13,9 @@ import {
   View,
 } from "react-native";
 import { account } from "../config/appwrite";
-import Colors from "../constants/Colors";
 
 export default function WelcomeScreen() {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const [checking, setChecking] = useState(true);
 
@@ -40,8 +41,8 @@ export default function WelcomeScreen() {
 
   if (checking) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -52,6 +53,11 @@ export default function WelcomeScreen() {
       style={styles.background}
       resizeMode="cover"
     >
+      {/* Dark mode overlay */}
+      {isDark && (
+        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.85)' }]} />
+      )}
+      
       <View style={styles.container}>
         <View style={styles.content}>
           <View style={styles.logoContainer}>
@@ -62,24 +68,26 @@ export default function WelcomeScreen() {
             />
           </View>
 
-          <Text style={styles.tagline}>Find it. Report it. Return it.</Text>
+          <Text style={[styles.tagline, { color: colors.textSecondary }]}>
+            Find it. Report it. Return it.
+          </Text>
         </View>
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.button}
+            style={[styles.button, { backgroundColor: colors.primary }]}
             onPress={() => router.push("/(onboarding)/onboarding")}
           >
-            <Text style={styles.buttonText}>Get Started</Text>
+            <Text style={[styles.buttonText, { color: colors.white }]}>Get Started</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => router.push("/(auth)/login")}
             style={styles.loginLink}
           >
-            <Text style={styles.loginText}>
+            <Text style={[styles.loginText, { color: colors.textSecondary }]}>
               Already have an account?{" "}
-              <Text style={styles.loginTextBold}>Login</Text>
+              <Text style={[styles.loginTextBold, { color: colors.primary }]}>Login</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -93,10 +101,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.background,
   },
   background: {
     flex: 1,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   container: {
     flex: 1,
@@ -118,21 +132,18 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "600",
     textAlign: "center",
-    color: Colors.textSecondary,
     marginTop: 20,
   },
   buttonContainer: {
     marginBottom: 40,
   },
   button: {
-    backgroundColor: Colors.primary,
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: "center",
     marginBottom: 15,
   },
   buttonText: {
-    color: Colors.white,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -141,10 +152,8 @@ const styles = StyleSheet.create({
   },
   loginText: {
     fontSize: 14,
-    color: Colors.textSecondary,
   },
   loginTextBold: {
     fontWeight: "700",
-    color: Colors.primary,
   },
 });

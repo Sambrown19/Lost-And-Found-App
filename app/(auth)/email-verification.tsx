@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -11,9 +12,9 @@ import {
   Keyboard,
 } from "react-native";
 import { account } from "../../config/appwrite";
-import Colors from "../../constants/Colors";
 
 export default function EmailVerificationScreen() {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
@@ -91,35 +92,45 @@ export default function EmailVerificationScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.iconContainer}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="mail-outline" size={60} color={Colors.primary} />
+          <View style={[
+            styles.iconCircle, 
+            { 
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(10, 22, 40, 0.1)',
+            }
+          ]}>
+            <Ionicons name="mail-outline" size={60} color={colors.primary} />
           </View>
         </View>
 
         <View style={styles.header}>
-          <Text style={styles.title}>Check Your Email</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Check Your Email</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             We've sent a verification link to your email address. Please check
             your inbox and click the link to verify your account.
           </Text>
         </View>
 
-        <View style={styles.infoContainer}>
+        <View style={[
+          styles.infoContainer, 
+          { 
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(10, 22, 40, 0.05)',
+          }
+        ]}>
           <Ionicons
             name="mail-unread-outline"
             size={24}
-            color={Colors.primary}
+            color={colors.primary}
           />
-          <Text style={styles.infoText}>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
             Didn't receive the email? Check your spam folder or request a new
             one.
           </Text>
         </View>
 
         <View style={styles.resendContainer}>
-          <Text style={styles.resendText}>
+          <Text style={[styles.resendText, { color: colors.textSecondary }]}>
             {!canResend ? (
               <>Resend available in {formatTime(timer)}</>
             ) : (
@@ -127,6 +138,7 @@ export default function EmailVerificationScreen() {
                 <Text
                   style={[
                     styles.resendLink,
+                    { color: colors.primary },
                     loading && styles.resendLinkDisabled,
                   ]}
                 >
@@ -137,8 +149,11 @@ export default function EmailVerificationScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleContinue}>
-          <Text style={styles.buttonText}>Back to Login</Text>
+        <TouchableOpacity 
+          style={[styles.button, { backgroundColor: colors.primary }]} 
+          onPress={handleContinue}
+        >
+          <Text style={[styles.buttonText, { color: colors.white }]}>Back to Login</Text>
         </TouchableOpacity>
       </View>
     </TouchableWithoutFeedback>
@@ -150,7 +165,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     justifyContent: "center",
-    backgroundColor: Colors.background,
   },
   iconContainer: {
     alignItems: "center",
@@ -160,7 +174,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "rgba(10, 22, 40, 0.1)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -171,18 +184,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700",
-    color: Colors.textPrimary,
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
     textAlign: "center",
     lineHeight: 20,
   },
   infoContainer: {
     flexDirection: "row",
-    backgroundColor: "rgba(10, 22, 40, 0.05)",
     padding: 15,
     borderRadius: 10,
     marginBottom: 30,
@@ -192,7 +202,6 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: Colors.textSecondary,
     lineHeight: 20,
   },
   resendContainer: {
@@ -201,23 +210,19 @@ const styles = StyleSheet.create({
   },
   resendText: {
     fontSize: 14,
-    color: Colors.textSecondary,
   },
   resendLink: {
-    color: Colors.primary,
     fontWeight: "600",
   },
   resendLinkDisabled: {
     opacity: 0.6,
   },
   button: {
-    backgroundColor: Colors.primary,
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: "center",
   },
   buttonText: {
-    color: Colors.white,
     fontSize: 16,
     fontWeight: "600",
   },

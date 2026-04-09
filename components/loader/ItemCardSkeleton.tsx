@@ -1,11 +1,19 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { SkeletonCircle, SkeletonLine } from "./SkeletonBase";
-import Colors from "../../constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function ItemCardSkeleton() {
+  const { colors } = useTheme();
+  
   return (
-    <View style={styles.card}>
+    <View style={[
+      styles.card, 
+      { 
+        backgroundColor: colors.white,
+        borderColor: colors.border,
+      }
+    ]}>
       <SkeletonLine width="100%" height={160} borderRadius={12} />
 
       <View style={styles.content}>
@@ -19,16 +27,16 @@ export default function ItemCardSkeleton() {
         />
 
         <View style={styles.row}>
-          <View style={styles.icon} />
+          <View style={[styles.icon, { backgroundColor: colors.border }]} />
           <SkeletonLine width="60%" height={14} />
         </View>
 
         <View style={styles.row}>
-          <View style={styles.icon} />
+          <View style={[styles.icon, { backgroundColor: colors.border }]} />
           <SkeletonLine width="40%" height={14} />
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { borderTopColor: colors.border }]}>
           <SkeletonLine width={100} height={14} />
           <SkeletonCircle size={30} />
         </View>
@@ -39,12 +47,10 @@ export default function ItemCardSkeleton() {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.white,
     borderRadius: 12,
     marginBottom: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   content: {
     padding: 12,
@@ -59,7 +65,6 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: "#e1e9ee",
   },
   footer: {
     flexDirection: "row",
@@ -68,7 +73,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
   },
   mb2: {
     marginBottom: 8,

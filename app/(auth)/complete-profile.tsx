@@ -1,6 +1,7 @@
 // app/(auth)/complete-profile.tsx
 
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/context/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -19,10 +20,10 @@ import {
   View,
 } from 'react-native';
 import { account } from '../../config/appwrite';
-import Colors from '../../constants/Colors';
 import { createUserProfile, uploadProfileImage } from '../../services/userService';
 
 export default function CompleteProfileScreen() {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -85,42 +86,42 @@ export default function CompleteProfileScreen() {
   };
 
   const handleComplete = async () => {
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const user = await account.get();
-    
-    let profileImageUrl = '';
-    
-    // Upload image if selected
-    if (imageUri) {
-      profileImageUrl = await uploadProfileImage(imageUri);
+    try {
+      const user = await account.get();
+      
+      let profileImageUrl = '';
+      
+      // Upload image if selected
+      if (imageUri) {
+        profileImageUrl = await uploadProfileImage(imageUri);
+      }
+      
+      // Save profile to database
+      await createUserProfile({
+        email: user.email,
+        fullName,
+        studentId,
+        phoneNumber,
+        campus,
+        profileImage: profileImageUrl,
+        isVerified: true,
+      });
+
+      Alert.alert('Success', 'Profile created successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.replace('/(tabs)/home'),
+        },
+      ]);
+    } catch (error: any) {
+      console.error('Complete profile error:', error);
+      Alert.alert('Error', error.message || 'Failed to save profile. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    
-    // Save profile to database
-    await createUserProfile({
-      email: user.email,
-      fullName,
-      studentId,
-      phoneNumber,
-      campus,
-      profileImage: profileImageUrl,
-      isVerified: true,
-    });
-
-     Alert.alert('Success', 'Profile created successfully!', [
-      {
-        text: 'OK',
-        onPress: () => router.replace('/(tabs)/home'),
-      },
-    ]);
-  } catch (error: any) {
-    console.error('Complete profile error:', error);
-    Alert.alert('Error', error.message || 'Failed to save profile. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const selectCampus = (option: string) => {
     setCampus(option);
@@ -130,29 +131,46 @@ export default function CompleteProfileScreen() {
   const renderStep1 = () => (
     <>
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>Profile Setup</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Profile Setup</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Fill in your details to set up your account
         </Text>
       </View>
 
       <View style={styles.form}>
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Full Name</Text>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Full Name</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.white,
+                borderColor: colors.border,
+                color: colors.textPrimary,
+              },
+            ]}
             placeholder="Samuel Duodu Sampson"
+            placeholderTextColor={colors.textLight}
             value={fullName}
             onChangeText={setFullName}
           />
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Student ID</Text>
-          <View style={styles.passwordContainer}>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Student ID</Text>
+          <View
+            style={[
+              styles.passwordContainer,
+              {
+                backgroundColor: colors.white,
+                borderColor: colors.border,
+              },
+            ]}
+          >
             <TextInput
-              style={styles.passwordInput}
+              style={[styles.passwordInput, { color: colors.textPrimary }]}
               placeholder="PUIT/22210010"
+              placeholderTextColor={colors.textLight}
               value={studentId}
               onChangeText={setStudentId}
               secureTextEntry={!showStudentId}
@@ -164,17 +182,25 @@ export default function CompleteProfileScreen() {
               <Ionicons
                 name={showStudentId ? 'eye-off-outline' : 'eye-outline'}
                 size={20}
-                color={Colors.textLight}
+                color={colors.textLight}
               />
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Phone Number</Text>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Phone Number</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.white,
+                borderColor: colors.border,
+                color: colors.textPrimary,
+              },
+            ]}
             placeholder="+233"
+            placeholderTextColor={colors.textLight}
             value={phoneNumber}
             onChangeText={setPhoneNumber}
             keyboardType="phone-pad"
@@ -182,30 +208,48 @@ export default function CompleteProfileScreen() {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Primary Campus Location</Text>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Primary Campus Location</Text>
           <TouchableOpacity
-            style={styles.dropdownButton}
+            style={[
+              styles.dropdownButton,
+              {
+                backgroundColor: colors.white,
+                borderColor: colors.border,
+              },
+            ]}
             onPress={() => setShowCampusDropdown(!showCampusDropdown)}
           >
-            <Text style={[styles.dropdownText, !campus && styles.placeholder]}>
+            <Text style={[
+              styles.dropdownText,
+              !campus && styles.placeholder,
+              { color: campus ? colors.textPrimary : colors.textLight }
+            ]}>
               {campus || 'Select campus'}
             </Text>
             <Ionicons
               name={showCampusDropdown ? 'chevron-up' : 'chevron-down'}
               size={20}
-              color={Colors.textLight}
+              color={colors.textLight}
             />
           </TouchableOpacity>
           
           {showCampusDropdown && (
-            <View style={styles.dropdownList}>
+            <View style={[
+              styles.dropdownList,
+              {
+                backgroundColor: colors.white,
+                borderColor: colors.border,
+              },
+            ]}>
               {campusOptions.map((option, index) => (
                 <TouchableOpacity
                   key={index}
-                  style={styles.dropdownItem}
+                  style={[styles.dropdownItem, { borderBottomColor: colors.border }]}
                   onPress={() => selectCampus(option)}
                 >
-                  <Text style={styles.dropdownItemText}>{option}</Text>
+                  <Text style={[styles.dropdownItemText, { color: colors.textPrimary }]}>
+                    {option}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -214,10 +258,10 @@ export default function CompleteProfileScreen() {
       </View>
 
       <TouchableOpacity
-        style={styles.button}
+        style={[styles.button, { backgroundColor: colors.primary }]}
         onPress={handleContinueStep1}
       >
-        <Text style={styles.buttonText}>Continue</Text>
+        <Text style={[styles.buttonText, { color: colors.white }]}>Continue</Text>
       </TouchableOpacity>
     </>
   );
@@ -225,8 +269,8 @@ export default function CompleteProfileScreen() {
   const renderStep2 = () => (
     <>
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>Picture Upload</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Picture Upload</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Upload your profile picture to complete your account
         </Text>
       </View>
@@ -236,27 +280,32 @@ export default function CompleteProfileScreen() {
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.profileImage} />
           ) : (
-            <View style={styles.placeholderImage}>
-              <Text style={styles.initialsText}>{getInitials(fullName)}</Text>
+            <View style={[styles.placeholderImage, { backgroundColor: colors.primary }]}>
+              <Text style={[styles.initialsText, { color: colors.white }]}>
+                {getInitials(fullName)}
+              </Text>
             </View>
           )}
         </View>
 
-        <TouchableOpacity style={styles.addPhotoButton} onPress={pickImage}>
-          <Text style={styles.addPhotoText}>Add Photo</Text>
+        <TouchableOpacity 
+          style={[styles.addPhotoButton, { borderColor: colors.primary }]} 
+          onPress={pickImage}
+        >
+          <Text style={[styles.addPhotoText, { color: colors.primary }]}>Add Photo</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+          style={[styles.button, { backgroundColor: colors.primary }, loading && styles.buttonDisabled]}
           onPress={handleComplete}
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color={Colors.white} />
+            <ActivityIndicator color={colors.white} />
           ) : (
-            <Text style={styles.buttonText}>Complete</Text>
+            <Text style={[styles.buttonText, { color: colors.white }]}>Complete</Text>
           )}
         </TouchableOpacity>
 
@@ -265,7 +314,7 @@ export default function CompleteProfileScreen() {
           onPress={handleComplete}
           disabled={loading}
         >
-          <Text style={styles.skipText}>Skip for now</Text>
+          <Text style={[styles.skipText, { color: colors.textSecondary }]}>Skip for now</Text>
         </TouchableOpacity>
       </View>
     </>
@@ -273,10 +322,10 @@ export default function CompleteProfileScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
       
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Header with Back Button */}
@@ -285,20 +334,37 @@ export default function CompleteProfileScreen() {
             style={styles.backButton}
             onPress={() => currentStep === 1 ? router.back() : setCurrentStep(1)}
           >
-            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           
           {/* Step Indicator */}
           <View style={styles.stepIndicator}>
             <View style={styles.stepItem}>
-              <View style={[styles.stepCircle, currentStep >= 1 && styles.stepCircleActive]}>
-                <Text style={[styles.stepNumber, currentStep >= 1 && styles.stepNumberActive]}>1</Text>
+              <View style={[
+                styles.stepCircle, 
+                { backgroundColor: currentStep >= 1 ? colors.primary : colors.border },
+                currentStep >= 1 && styles.stepCircleActive
+              ]}>
+                <Text style={[
+                  styles.stepNumber, 
+                  { color: currentStep >= 1 ? colors.white : colors.textLight }
+                ]}>1</Text>
               </View>
             </View>
-            <View style={[styles.stepLine, currentStep >= 2 && styles.stepLineActive]} />
+            <View style={[
+              styles.stepLine, 
+              { backgroundColor: currentStep >= 2 ? colors.primary : colors.border }
+            ]} />
             <View style={styles.stepItem}>
-              <View style={[styles.stepCircle, currentStep >= 2 && styles.stepCircleActive]}>
-                <Text style={[styles.stepNumber, currentStep >= 2 && styles.stepNumberActive]}>2</Text>
+              <View style={[
+                styles.stepCircle, 
+                { backgroundColor: currentStep >= 2 ? colors.primary : colors.border },
+                currentStep >= 2 && styles.stepCircleActive
+              ]}>
+                <Text style={[
+                  styles.stepNumber, 
+                  { color: currentStep >= 2 ? colors.white : colors.textLight }
+                ]}>2</Text>
               </View>
             </View>
           </View>
@@ -313,7 +379,6 @@ export default function CompleteProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -342,29 +407,20 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   stepCircleActive: {
-    backgroundColor: Colors.primary,
+    // backgroundColor handled inline
   },
   stepNumber: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.textLight,
-  },
-  stepNumberActive: {
-    color: Colors.white,
   },
   stepLine: {
     width: 60,
     height: 2,
-    backgroundColor: Colors.border,
     marginHorizontal: 10,
-  },
-  stepLineActive: {
-    backgroundColor: Colors.primary,
   },
   titleContainer: {
     marginBottom: 30,
@@ -372,12 +428,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: Colors.textPrimary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
     lineHeight: 20,
   },
   form: {
@@ -389,14 +443,11 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: Colors.textPrimary,
     marginBottom: 8,
     fontWeight: '500',
   },
   input: {
-    backgroundColor: Colors.white,
     borderWidth: 1,
-    borderColor: Colors.border,
     borderRadius: 8,
     paddingHorizontal: 15,
     paddingVertical: 12,
@@ -405,9 +456,7 @@ const styles = StyleSheet.create({
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.white,
     borderWidth: 1,
-    borderColor: Colors.border,
     borderRadius: 8,
   },
   passwordInput: {
@@ -423,28 +472,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: Colors.white,
     borderWidth: 1,
-    borderColor: Colors.border,
     borderRadius: 8,
     paddingHorizontal: 15,
     paddingVertical: 12,
   },
   dropdownText: {
     fontSize: 16,
-    color: Colors.textPrimary,
   },
   placeholder: {
-    color: Colors.textLight,
+    // color handled inline
   },
   dropdownList: {
     position: 'absolute',
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: Colors.white,
     borderWidth: 1,
-    borderColor: Colors.border,
     borderRadius: 8,
     marginTop: 5,
     zIndex: 1000,
@@ -458,11 +502,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
   dropdownItemText: {
     fontSize: 16,
-    color: Colors.textPrimary,
   },
   imageSection: {
     flex: 1,
@@ -483,29 +525,24 @@ const styles = StyleSheet.create({
   placeholderImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   initialsText: {
     fontSize: 48,
     fontWeight: '700',
-    color: Colors.white,
   },
   addPhotoButton: {
     paddingHorizontal: 30,
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.primary,
   },
   addPhotoText: {
     fontSize: 16,
-    color: Colors.primary,
     fontWeight: '600',
   },
   button: {
-    backgroundColor: Colors.primary,
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: 'center',
@@ -516,7 +553,6 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -530,6 +566,5 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
-    color: Colors.textSecondary,
   },
 });

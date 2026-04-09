@@ -1,16 +1,18 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { SkeletonBase, SkeletonLine, SkeletonCircle } from "./SkeletonBase";
-import Colors from "../../constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function ItemDetailSkeleton() {
+  const { colors } = useTheme();
+  
   return (
     <SkeletonBase style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.backButtonSkeleton} />
+        <View style={[styles.backButtonSkeleton, { backgroundColor: "rgba(255, 255, 255, 0.9)" }]} />
       </View>
 
-      <View style={styles.imageSkeleton} />
+      <View style={[styles.imageSkeleton, { backgroundColor: colors.border }]} />
 
       <View style={styles.content}>
         <SkeletonLine width="80%" height={32} style={styles.mb2} />
@@ -23,21 +25,21 @@ export default function ItemDetailSkeleton() {
         />
 
         <View style={styles.infoRow}>
-          <View style={styles.iconSkeleton} />
+          <View style={[styles.iconSkeleton, { backgroundColor: colors.border }]} />
           <SkeletonLine width="60%" height={16} />
         </View>
 
         <View style={styles.infoRow}>
-          <View style={styles.iconSkeleton} />
+          <View style={[styles.iconSkeleton, { backgroundColor: colors.border }]} />
           <SkeletonLine width="50%" height={16} />
         </View>
 
         <View style={styles.infoRow}>
-          <View style={styles.iconSkeleton} />
+          <View style={[styles.iconSkeleton, { backgroundColor: colors.border }]} />
           <SkeletonLine width="40%" height={16} />
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
         <SkeletonLine width="35%" height={20} style={styles.mb3} />
 
@@ -45,7 +47,7 @@ export default function ItemDetailSkeleton() {
         <SkeletonLine width="95%" height={16} style={styles.mb2} />
         <SkeletonLine width="80%" height={16} style={styles.mb4} />
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
         <SkeletonLine width="30%" height={20} style={styles.mb3} />
 
@@ -58,8 +60,14 @@ export default function ItemDetailSkeleton() {
         </View>
       </View>
 
-      <View style={styles.footer}>
-        <View style={styles.buttonSkeleton} />
+      <View style={[
+        styles.footer, 
+        { 
+          backgroundColor: colors.white,
+          borderTopColor: colors.border,
+        }
+      ]}>
+        <View style={[styles.buttonSkeleton, { backgroundColor: colors.border }]} />
       </View>
     </SkeletonBase>
   );
@@ -79,12 +87,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
   },
   imageSkeleton: {
     width: "100%",
     height: 300,
-    backgroundColor: "#e1e9ee",
   },
   content: {
     padding: 20,
@@ -111,11 +117,9 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#e1e9ee",
   },
   divider: {
     height: 1,
-    backgroundColor: "#e1e9ee",
     marginVertical: 20,
   },
   userInfoRow: {
@@ -129,13 +133,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    backgroundColor: Colors.white,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
   },
   buttonSkeleton: {
     height: 56,
     borderRadius: 12,
-    backgroundColor: "#e1e9ee",
   },
 });

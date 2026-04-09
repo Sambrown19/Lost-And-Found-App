@@ -1,9 +1,10 @@
 // components/AnimatedItemCardSkeleton.tsx
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
-import Colors from '../constants/Colors';
+import { useTheme } from '@/context/ThemeContext';
 
 const AnimatedItemCardSkeleton = () => {
+  const { colors } = useTheme();
   const shimmerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -22,14 +23,24 @@ const AnimatedItemCardSkeleton = () => {
     outputRange: [-200, 200],
   });
 
+  // Determine shimmer color based on theme
+  const shimmerColor = colors.white === '#FFFFFF' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.1)';
+
   return (
-    <View style={styles.container}>
-      <View style={styles.imageSkeleton}>
+    <View style={[
+      styles.container, 
+      { 
+        backgroundColor: colors.white,
+        borderColor: colors.border,
+      }
+    ]}>
+      <View style={[styles.imageSkeleton, { backgroundColor: colors.border }]}>
         <Animated.View
           style={[
             styles.shimmer,
             {
               transform: [{ translateX }],
+              backgroundColor: shimmerColor,
             },
           ]}
         />
@@ -37,24 +48,26 @@ const AnimatedItemCardSkeleton = () => {
       
       <View style={styles.content}>
         <View style={styles.skeletonWrapper}>
-          <View style={[styles.titleSkeleton, styles.skeletonBase]} />
+          <View style={[styles.titleSkeleton, { backgroundColor: colors.border }]} />
           <Animated.View
             style={[
               styles.shimmer,
               {
                 transform: [{ translateX }],
+                backgroundColor: shimmerColor,
               },
             ]}
           />
         </View>
         
         <View style={styles.skeletonWrapper}>
-          <View style={[styles.categorySkeleton, styles.skeletonBase]} />
+          <View style={[styles.categorySkeleton, { backgroundColor: colors.border }]} />
           <Animated.View
             style={[
               styles.shimmer,
               {
                 transform: [{ translateX }],
+                backgroundColor: shimmerColor,
               },
             ]}
           />
@@ -62,24 +75,26 @@ const AnimatedItemCardSkeleton = () => {
         
         <View style={styles.row}>
           <View style={styles.skeletonWrapper}>
-            <View style={[styles.locationSkeleton, styles.skeletonBase]} />
+            <View style={[styles.locationSkeleton, { backgroundColor: colors.border }]} />
             <Animated.View
               style={[
                 styles.shimmer,
                 {
                   transform: [{ translateX }],
+                  backgroundColor: shimmerColor,
                 },
               ]}
             />
           </View>
           
           <View style={styles.skeletonWrapper}>
-            <View style={[styles.dateSkeleton, styles.skeletonBase]} />
+            <View style={[styles.dateSkeleton, { backgroundColor: colors.border }]} />
             <Animated.View
               style={[
                 styles.shimmer,
                 {
                   transform: [{ translateX }],
+                  backgroundColor: shimmerColor,
                 },
               ]}
             />
@@ -87,37 +102,40 @@ const AnimatedItemCardSkeleton = () => {
         </View>
         
         <View style={styles.skeletonWrapper}>
-          <View style={[styles.descriptionSkeleton, styles.skeletonBase]} />
+          <View style={[styles.descriptionSkeleton, { backgroundColor: colors.border }]} />
           <Animated.View
             style={[
               styles.shimmer,
               {
                 transform: [{ translateX }],
+                backgroundColor: shimmerColor,
               },
             ]}
           />
         </View>
         
         <View style={styles.skeletonWrapper}>
-          <View style={[styles.descriptionSkeletonShort, styles.skeletonBase]} />
+          <View style={[styles.descriptionSkeletonShort, { backgroundColor: colors.border }]} />
           <Animated.View
             style={[
               styles.shimmer,
               {
                 transform: [{ translateX }],
+                backgroundColor: shimmerColor,
               },
             ]}
           />
         </View>
         
-        <View style={styles.userRow}>
+        <View style={[styles.userRow, { borderTopColor: colors.border }]}>
           <View style={styles.skeletonWrapper}>
-            <View style={[styles.avatarSkeleton, styles.skeletonBase]} />
+            <View style={[styles.avatarSkeleton, { backgroundColor: colors.border }]} />
             <Animated.View
               style={[
                 styles.shimmer,
                 {
                   transform: [{ translateX }],
+                  backgroundColor: shimmerColor,
                 },
               ]}
             />
@@ -125,24 +143,26 @@ const AnimatedItemCardSkeleton = () => {
           
           <View style={styles.userInfo}>
             <View style={styles.skeletonWrapper}>
-              <View style={[styles.userNameSkeleton, styles.skeletonBase]} />
+              <View style={[styles.userNameSkeleton, { backgroundColor: colors.border }]} />
               <Animated.View
                 style={[
                   styles.shimmer,
                   {
                     transform: [{ translateX }],
+                    backgroundColor: shimmerColor,
                   },
                 ]}
               />
             </View>
             
             <View style={styles.skeletonWrapper}>
-              <View style={[styles.userSubSkeleton, styles.skeletonBase]} />
+              <View style={[styles.userSubSkeleton, { backgroundColor: colors.border }]} />
               <Animated.View
                 style={[
                   styles.shimmer,
                   {
                     transform: [{ translateX }],
+                    backgroundColor: shimmerColor,
                   },
                 ]}
               />
@@ -151,12 +171,13 @@ const AnimatedItemCardSkeleton = () => {
         </View>
       </View>
       
-      <View style={[styles.typeSkeleton, styles.skeletonBase]}>
+      <View style={[styles.typeSkeleton, { backgroundColor: colors.border }]}>
         <Animated.View
           style={[
             styles.shimmer,
             {
               transform: [{ translateX }],
+              backgroundColor: shimmerColor,
             },
           ]}
         />
@@ -167,12 +188,10 @@ const AnimatedItemCardSkeleton = () => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.white,
     borderRadius: 16,
     marginBottom: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: Colors.border,
     position: 'relative',
   },
   
@@ -181,22 +200,16 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   
-  skeletonBase: {
-    backgroundColor: Colors.border,
-  },
-  
   shimmer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   
   imageSkeleton: {
     height: 180,
-    backgroundColor: Colors.border,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -258,7 +271,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
   },
   
   avatarSkeleton: {
