@@ -1,3 +1,4 @@
+import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -13,11 +14,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import Colors from '../constants/Colors';
 import { uploadImage } from '../services/itemsService';
 import { UserProfile, getUserProfile, updateUserProfile } from '../services/userService';
 
 export default function ProfileScreen() {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,7 +100,7 @@ export default function ProfileScreen() {
         
         const uploadedUrl = await uploadImage(imageUri);
         
-        await updateUserProfile({ profileImage: uploadedUrl });
+        await updateUserProfile({ profileImage: uploadedUrl[0] });
         
         await loadProfile(); 
         Alert.alert('Success', 'Profile image updated');
@@ -122,48 +123,48 @@ export default function ProfileScreen() {
 
   if (loading && !profile) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
+      <View style={[styles.header, { backgroundColor: colors.white }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Profile</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>My Profile</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      <View style={styles.profileImageSection}>
+      <View style={[styles.profileImageSection, { backgroundColor: colors.white }]}>
         <View style={styles.profileImageContainer}>
           {profile?.profileImage ? (
-            <Image source={{ uri: profile.profileImage }} style={styles.profileImage} />
+            <Image source={{ uri: profile.profileImage }} style={[styles.profileImage, { borderColor: colors.primary }]} />
           ) : (
-            <View style={styles.profileImagePlaceholder}>
-              <Text style={styles.profileImageText}>
+            <View style={[styles.profileImagePlaceholder, { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+              <Text style={[styles.profileImageText, { color: colors.white }]}>
                 {getInitials(profile?.fullName || '')}
               </Text>
             </View>
           )}
           <TouchableOpacity 
-            style={styles.editImageButton}
+            style={[styles.editImageButton, { backgroundColor: colors.primary, borderColor: colors.white }]}
             onPress={pickProfileImage}
             disabled={uploadingImage}
           >
             {uploadingImage ? (
-              <ActivityIndicator size="small" color={Colors.white} />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
-              <Ionicons name="camera" size={20} color={Colors.white} />
+              <Ionicons name="camera" size={20} color={colors.white} />
             )}
           </TouchableOpacity>
         </View>
         
-        <Text style={styles.profileName}>{profile?.fullName}</Text>
-        <Text style={styles.profileEmail}>{profile?.email}</Text>
+        <Text style={[styles.profileName, { color: colors.textPrimary }]}>{profile?.fullName}</Text>
+        <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>{profile?.email}</Text>
         
         {profile?.isVerified && (
           <View style={styles.verifiedBadge}>
@@ -175,118 +176,122 @@ export default function ProfileScreen() {
 
       <View style={styles.editButtonContainer}>
         <TouchableOpacity
-          style={styles.editButton}
+          style={[styles.editButton, { backgroundColor: colors.white, borderColor: colors.primary }]}
           onPress={() => setEditing(!editing)}
         >
-          <Ionicons name={editing ? 'close' : 'pencil'} size={16} color={Colors.primary} />
-          <Text style={styles.editButtonText}>
+          <Ionicons name={editing ? 'close' : 'pencil'} size={16} color={colors.primary} />
+          <Text style={[styles.editButtonText, { color: colors.primary }]}>
             {editing ? 'Cancel Edit' : 'Edit Profile'}
           </Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.formContainer}>
+      <View style={[styles.formContainer, { backgroundColor: colors.white }]}>
         {editing ? (
           <>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Full Name *</Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Full Name *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.textPrimary }]}
                 value={formData.fullName}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, fullName: text }))}
                 placeholder="Enter your full name"
+                placeholderTextColor={colors.textLight}
                 autoCapitalize="words"
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Student ID *</Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Student ID *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.textPrimary }]}
                 value={formData.studentId}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, studentId: text }))}
                 placeholder="Enter your student ID"
+                placeholderTextColor={colors.textLight}
                 autoCapitalize="characters"
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phone Number *</Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Phone Number *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.textPrimary }]}
                 value={formData.phoneNumber}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, phoneNumber: text }))}
                 placeholder="Enter your phone number"
+                placeholderTextColor={colors.textLight}
                 keyboardType="phone-pad"
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Campus *</Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Campus *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.textPrimary }]}
                 value={formData.campus}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, campus: text }))}
                 placeholder="Enter your campus"
+                placeholderTextColor={colors.textLight}
               />
             </View>
 
             <TouchableOpacity
-              style={styles.saveButton}
+              style={[styles.saveButton, { backgroundColor: colors.primary }]}
               onPress={handleUpdateProfile}
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator size="small" color={Colors.white} />
+                <ActivityIndicator size="small" color={colors.white} />
               ) : (
-                <Text style={styles.saveButtonText}>Save Changes</Text>
+                <Text style={[styles.saveButtonText, { color: colors.white }]}>Save Changes</Text>
               )}
             </TouchableOpacity>
           </>
         ) : (
           <>
-            <View style={styles.detailRow}>
-              <Ionicons name="person-outline" size={20} color={Colors.textLight} />
+            <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+              <Ionicons name="person-outline" size={20} color={colors.textLight} />
               <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Full Name</Text>
-                <Text style={styles.detailValue}>{profile?.fullName}</Text>
+                <Text style={[styles.detailLabel, { color: colors.textLight }]}>Full Name</Text>
+                <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{profile?.fullName}</Text>
               </View>
             </View>
 
-            <View style={styles.detailRow}>
-              <Ionicons name="school-outline" size={20} color={Colors.textLight} />
+            <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+              <Ionicons name="school-outline" size={20} color={colors.textLight} />
               <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Student ID</Text>
-                <Text style={styles.detailValue}>{profile?.studentId}</Text>
+                <Text style={[styles.detailLabel, { color: colors.textLight }]}>Student ID</Text>
+                <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{profile?.studentId}</Text>
               </View>
             </View>
 
-            <View style={styles.detailRow}>
-              <Ionicons name="call-outline" size={20} color={Colors.textLight} />
+            <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+              <Ionicons name="call-outline" size={20} color={colors.textLight} />
               <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Phone Number</Text>
-                <Text style={styles.detailValue}>{profile?.phoneNumber}</Text>
+                <Text style={[styles.detailLabel, { color: colors.textLight }]}>Phone Number</Text>
+                <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{profile?.phoneNumber}</Text>
               </View>
             </View>
 
-            <View style={styles.detailRow}>
-              <Ionicons name="location-outline" size={20} color={Colors.textLight} />
+            <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+              <Ionicons name="location-outline" size={20} color={colors.textLight} />
               <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Campus</Text>
-                <Text style={styles.detailValue}>{profile?.campus}</Text>
+                <Text style={[styles.detailLabel, { color: colors.textLight }]}>Campus</Text>
+                <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{profile?.campus}</Text>
               </View>
             </View>
           </>
         )}
       </View>
 
-      <View style={[styles.formContainer, styles.emailContainer]}>
-        <View style={styles.detailRow}>
-          <Ionicons name="mail-outline" size={20} color={Colors.textLight} />
+      <View style={[styles.formContainer, styles.emailContainer, { backgroundColor: colors.white }]}>
+        <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+          <Ionicons name="mail-outline" size={20} color={colors.textLight} />
           <View style={styles.detailContent}>
-            <Text style={styles.detailLabel}>Email</Text>
-            <Text style={styles.detailValue}>{profile?.email}</Text>
-            <Text style={styles.emailNote}>
+            <Text style={[styles.detailLabel, { color: colors.textLight }]}>Email</Text>
+            <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{profile?.email}</Text>
+            <Text style={[styles.emailNote, { color: colors.textLight }]}>
               Login email (cannot be changed)
             </Text>
           </View>
@@ -294,7 +299,7 @@ export default function ProfileScreen() {
       </View>
 
       <TouchableOpacity 
-        style={styles.deleteButton}
+        style={[styles.deleteButton, { backgroundColor: colors.white }]}
         onPress={() => Alert.alert(
           'Delete Account',
           'Are you sure? This action cannot be undone.',
@@ -316,11 +321,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
   },
+  
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -329,7 +333,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 20,
-    backgroundColor: Colors.white,
   },
   backButton: {
     padding: 8,
@@ -337,12 +340,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.textPrimary,
   },
   profileImageSection: {
     alignItems: 'center',
     paddingVertical: 30,
-    backgroundColor: Colors.white,
     marginBottom: 10,
   },
   profileImageContainer: {
@@ -354,22 +355,18 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 3,
-    borderColor: Colors.primary,
   },
   profileImagePlaceholder: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: Colors.primary,
   },
   profileImageText: {
     fontSize: 36,
     fontWeight: '700',
-    color: Colors.white,
   },
   editImageButton: {
     position: 'absolute',
@@ -378,21 +375,17 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: Colors.white,
   },
   profileName: {
     fontSize: 22,
     fontWeight: '700',
-    color: Colors.textPrimary,
     marginBottom: 4,
   },
   profileEmail: {
     fontSize: 14,
-    color: Colors.textSecondary,
     marginBottom: 12,
   },
   verifiedBadge: {
@@ -418,19 +411,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: Colors.white,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.primary,
   },
   editButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.primary,
   },
   formContainer: {
-    backgroundColor: Colors.white,
     padding: 20,
     marginHorizontal: 20,
     borderRadius: 12,
@@ -448,28 +437,22 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.textPrimary,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
     borderRadius: 8,
     paddingHorizontal: 15,
     paddingVertical: 12,
     fontSize: 15,
-    color: Colors.textPrimary,
   },
   saveButton: {
-    backgroundColor: Colors.primary,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 10,
   },
   saveButtonText: {
-    color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -479,31 +462,26 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
   detailContent: {
     flex: 1,
   },
   detailLabel: {
     fontSize: 12,
-    color: Colors.textLight,
     marginBottom: 4,
   },
   detailValue: {
     fontSize: 15,
-    color: Colors.textPrimary,
     fontWeight: '500',
   },
   emailNote: {
     fontSize: 11,
-    color: Colors.textLight,
     fontStyle: 'italic',
     marginTop: 4,
   },
   statsTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.textPrimary,
     marginBottom: 16,
   },
   statsGrid: {
@@ -514,7 +492,6 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: Colors.background,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -522,19 +499,16 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: '700',
-    color: Colors.primary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
   },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: Colors.white,
     marginHorizontal: 20,
     marginBottom: 40,
     padding: 16,

@@ -1,9 +1,9 @@
+import { useTheme } from "@/context/ThemeContext";
 import { Item } from "@/services/itemsService";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Colors from "../constants/Colors";
-import { useRouter } from "expo-router";
 
 interface Props {
   item: Item;
@@ -12,25 +12,19 @@ interface Props {
 }
 
 export default function ItemCard({ item }: Props) {
+  const { colors } = useTheme();
   const statusColor = item.type === "lost" ? "#FF4444" : "#4CAF50";
-
-  console.log("item Card", item);
-
   const router = useRouter();
 
-  // Helper function to get the first image URL
   const getFirstImage = () => {
     if (!item.images) return null;
-
     if (typeof item.images === "string") {
       const images = item.images.split(",");
       return images[0]?.trim();
     }
-
-    if (Array.isArray(item.images) && item.images.length > 0) {
+    if (Array.isArray(item.images) && (item.images as string[]).length > 0) {
       return item.images[0];
     }
-
     return null;
   };
 
@@ -38,55 +32,47 @@ export default function ItemCard({ item }: Props) {
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, { backgroundColor: colors.white, borderColor: colors.border }]}
       onPress={() => router.push(`/item/${item.$id}`)}
       activeOpacity={0.85}
     >
       {imageUrl ? (
         <Image
           source={{ uri: imageUrl }}
-          style={styles.image}
-          // defaultSource={require("../../assets/placeholder.png")}
+          style={[styles.image, { backgroundColor: colors.border }]}
         />
       ) : (
-        <View style={styles.imagePlaceholder}>
+        <View style={[styles.imagePlaceholder, { backgroundColor: colors.gray }]}>
           <Ionicons
-            name={
-              item.type === "lost"
-                ? "help-circle-outline"
-                : "checkmark-circle-outline"
-            }
+            name={item.type === "lost" ? "help-circle-outline" : "checkmark-circle-outline"}
             size={48}
-            color={Colors.textLight}
+            color={colors.textLight}
           />
         </View>
       )}
 
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
             {item.title}
           </Text>
-
           <Text style={[styles.type, { color: statusColor }]}>
             {item.type?.toUpperCase() || "LOST"}
           </Text>
         </View>
 
-        <Text style={styles.category}>{item.category}</Text>
+        <Text style={[styles.category, { color: colors.textSecondary }]}>
+          {item.category}
+        </Text>
 
         <View style={styles.meta}>
-          <Ionicons
-            name="location-outline"
-            size={14}
-            color={Colors.textLight}
-          />
-          <Text style={styles.location} numberOfLines={1}>
+          <Ionicons name="location-outline" size={14} color={colors.textLight} />
+          <Text style={[styles.location, { color: colors.textLight }]} numberOfLines={1}>
             {item.location}
           </Text>
         </View>
 
-        <Text style={styles.date}>
+        <Text style={[styles.date, { color: colors.textLight }]}>
           {item.createdAt
             ? new Date(item.createdAt).toLocaleDateString()
             : "Date not available"}
@@ -98,28 +84,22 @@ export default function ItemCard({ item }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.white,
     borderRadius: 14,
     marginBottom: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   image: {
     width: "100%",
     height: 160,
-    backgroundColor: Colors.border,
   },
   imagePlaceholder: {
     width: "100%",
     height: 160,
-    backgroundColor: Colors.border,
     justifyContent: "center",
     alignItems: "center",
   },
-  content: {
-    padding: 12,
-  },
+  content: { padding: 12 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -128,33 +108,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: "700",
-    color: Colors.textPrimary,
     flex: 1,
     marginRight: 8,
   },
-  type: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  category: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginVertical: 4,
-  },
-  meta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 2,
-  },
-  location: {
-    fontSize: 12,
-    color: Colors.textLight,
-    flex: 1,
-  },
-  date: {
-    fontSize: 11,
-    color: Colors.textLight,
-    marginTop: 6,
-  },
+  type: { fontSize: 12, fontWeight: "700" },
+  category: { fontSize: 12, marginVertical: 4 },
+  meta: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
+  location: { fontSize: 12, flex: 1 },
+  date: { fontSize: 11, marginTop: 6 },
 });

@@ -13,7 +13,8 @@ if (!endpoint || !projectId) {
 
 client
   .setEndpoint(endpoint || "https://fra.cloud.appwrite.io/v1")
-  .setProject(projectId || "");
+  .setProject(projectId || "")
+  .setPlatform("com.mante.lostandfound");  // ← ONLY ADD THIS
 
 export const account = new Account(client);
 export const databases = new Databases(client);
@@ -34,5 +35,6 @@ export const CONVERSATIONS_COLLECTION_ID =
 // Log to verify they're loaded (remove in production)
 console.log("DATABASE_ID:", DATABASE_ID);
 console.log("ITEMS_COLLECTION_ID:", ITEMS_COLLECTION_ID);
+console.log("Platform set to: com.mante.lostandfound");
 
 export default client;

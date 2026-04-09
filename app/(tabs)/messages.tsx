@@ -1,61 +1,37 @@
 import ConversationSkeleton from "@/components/loader/ConversationSkeleton";
 import { account } from "@/config/appwrite";
-import Colors from "@/constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 import { getUserConversations } from "@/services/messagesService";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
+  Alert,
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Alert,
 } from "react-native";
 
 const getInitials = (name: string) => {
   if (!name) return "?";
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  return name.split(" ").map((part) => part[0]).join("").toUpperCase().slice(0, 2);
 };
 
 const getRandomColor = (seed: string) => {
   const colors = [
-    "#E74C3C", // Deep Red
-    "#3498DB", // Deep Blue
-    "#2ECC71", // Deep Green
-    "#9B59B6", // Deep Purple
-    "#F39C12", // Deep Orange
-    "#1ABC9C", // Deep Teal
-    "#E91E63", // Deep Pink
-    "#00BCD4", // Deep Cyan
-    "#FF9800", // Deep Amber
-    "#8E44AD", // Deep Violet
-    "#16A085", // Deep Sea Green
-    "#C0392B", // Deep Brick Red
-    "#2980B9", // Deep Navy Blue
-    "#27AE60", // Deep Forest Green
-    "#D35400", // Deep Pumpkin
-    "#7F8C8D", // Deep Gray
-    "#2C3E50", // Deep Dark Blue
-    "#F1C40F", // Deep Gold
-    "#E67E22", // Deep Carrot
-    "#34495E", // Deep Midnight Blue
+    "#E74C3C", "#3498DB", "#2ECC71", "#9B59B6", "#F39C12",
+    "#1ABC9C", "#E91E63", "#00BCD4", "#FF9800", "#8E44AD",
+    "#16A085", "#C0392B", "#2980B9", "#27AE60", "#D35400",
+    "#7F8C8D", "#2C3E50", "#F1C40F", "#E67E22", "#34495E",
   ];
-
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     hash = (hash << 5) - hash + seed.charCodeAt(i);
-    hash = hash & hash; // Convert to 32-bit integer
+    hash = hash & hash;
   }
-
-  const index = Math.abs(hash) % colors.length;
-  return colors[index];
+  return colors[Math.abs(hash) % colors.length];
 };
 
 const formatTime = (dateString: string) => {
@@ -64,29 +40,17 @@ const formatTime = (dateString: string) => {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-  if (diff < 60000) {
-    return "Just now";
-  } else if (diff < 3600000) {
-    const minutes = Math.floor(diff / 60000);
-    return `${minutes}m ago`;
-  } else if (diff < 86400000) {
-    const hours = Math.floor(diff / 3600000);
-    return `${hours}h ago`;
-  } else if (days === 1) {
-    return "Yesterday";
-  } else if (days < 7) {
-    return `${days}d ago`;
-  } else {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  }
+  if (diff < 60000) return "Just now";
+  else if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  else if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  else if (days === 1) return "Yesterday";
+  else if (days < 7) return `${days}d ago`;
+  else return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
 export default function ConversationsScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState("");
@@ -96,10 +60,7 @@ export default function ConversationsScreen() {
       setLoading(true);
       const user = await account.get();
       setCurrentUserId(user.$id);
-      console.log("Current user ID:", user.$id);
-
       const data = await getUserConversations();
-      console.log("Conversations loaded:", data.length);
       setConversations(data);
     } catch (error) {
       console.error("Load conversations error:", error);
@@ -109,32 +70,15 @@ export default function ConversationsScreen() {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadConversations();
-    }, []),
-  );
+  useFocusEffect(useCallback(() => { loadConversations(); }, []));
 
   const getOtherParticipant = (conversation: any) => {
     let participants = conversation.participants;
-    if (typeof participants === "string") {
-      participants = participants.split(",");
-    }
-
-    const otherUserId = participants?.find(
-      (id: string) => id !== currentUserId,
-    );
-
+    if (typeof participants === "string") participants = participants.split(",");
+    const otherUserId = participants?.find((id: string) => id !== currentUserId);
     let names = conversation.participantNames;
-    if (typeof names === "string") {
-      names = names.split(",");
-    }
-
-    const otherUserName =
-      names?.find(
-        (_: any, index: number) => participants?.[index] !== currentUserId,
-      ) || "User";
-
+    if (typeof names === "string") names = names.split(",");
+    const otherUserName = names?.find((_: any, index: number) => participants?.[index] !== currentUserId) || "User";
     return { otherUserId, otherUserName };
   };
 
@@ -142,56 +86,54 @@ export default function ConversationsScreen() {
     const { otherUserId, otherUserName } = getOtherParticipant(item);
     const hasUnread = item.unreadCount > 0;
     const avatarColor = getRandomColor(otherUserId || otherUserName);
-    console.log(item);
 
     return (
       <TouchableOpacity
-        style={[styles.conversationItem, hasUnread && styles.unreadItem]}
+        style={[
+          styles.conversationItem,
+          { borderBottomColor: colors.border },
+          hasUnread && { backgroundColor: colors.gray },
+        ]}
         activeOpacity={0.7}
-        onPress={() => {
-          router.push({
-            pathname: "/chat/[id]",
-            params: {
-              id: item.$id,
-              otherUserId: otherUserId,
-              otherUserName: otherUserName,
-              itemId: item.itemId,
-              itemTitle: item.itemTitle,
-              itemImage: item.itemImage,
-            },
-          });
-        }}
+        onPress={() => router.push({
+          pathname: "/chat/[id]",
+          params: {
+            id: item.$id,
+            otherUserId,
+            otherUserName,
+            itemId: item.itemId,
+            itemTitle: item.itemTitle,
+            itemImage: item.itemImage,
+          },
+        })}
       >
         <View style={styles.avatarContainer}>
-          <View
-            style={[
-              styles.avatar,
-              styles.avatarPlaceholder,
-              { backgroundColor: avatarColor },
-            ]}
-          >
+          <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
             <Text style={styles.avatarText}>{getInitials(otherUserName)}</Text>
           </View>
-          {hasUnread && <View style={styles.unreadDot} />}
+          {hasUnread && (
+            <View style={[styles.unreadDot, { borderColor: colors.white }]} />
+          )}
         </View>
 
         <View style={styles.conversationInfo}>
           <View style={styles.conversationHeader}>
             <Text
-              style={[styles.userName, hasUnread && styles.unreadText]}
+              style={[styles.userName, { color: colors.textPrimary },
+                hasUnread && { fontWeight: "700" }]}
               numberOfLines={1}
             >
               {otherUserName}
             </Text>
-            <Text style={[styles.timeText, hasUnread && styles.unreadText]}>
+            <Text style={[styles.timeText, { color: colors.textLight }]}>
               {item.lastMessageTime ? formatTime(item.lastMessageTime) : ""}
             </Text>
           </View>
 
           {item.itemTitle && (
             <View style={styles.itemTitleContainer}>
-              <Ionicons name="cube-outline" size={12} color={Colors.primary} />
-              <Text style={styles.itemTitle} numberOfLines={1}>
+              <Ionicons name="cube-outline" size={12} color={colors.primary} />
+              <Text style={[styles.itemTitle, { color: colors.primary }]} numberOfLines={1}>
                 {item.itemTitle}
               </Text>
             </View>
@@ -199,14 +141,11 @@ export default function ConversationsScreen() {
 
           <View style={styles.lastMessageContainer}>
             {!item.lastMessage && (
-              <Ionicons
-                name="chatbubble-outline"
-                size={12}
-                color={Colors.textLight}
-              />
+              <Ionicons name="chatbubble-outline" size={12} color={colors.textLight} />
             )}
             <Text
-              style={[styles.lastMessage, hasUnread && styles.unreadText]}
+              style={[styles.lastMessage, { color: colors.textSecondary },
+                hasUnread && { color: colors.textPrimary, fontWeight: "500" }]}
               numberOfLines={1}
             >
               {item.lastMessage || "Tap to start conversation"}
@@ -215,7 +154,7 @@ export default function ConversationsScreen() {
         </View>
 
         {hasUnread && (
-          <View style={styles.unreadBadge}>
+          <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
             <Text style={styles.unreadBadgeText}>
               {item.unreadCount > 99 ? "99+" : item.unreadCount}
             </Text>
@@ -227,20 +166,17 @@ export default function ConversationsScreen() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons
-          name="chatbubbles-outline"
-          size={60}
-          color={Colors.textLight}
-        />
+      <View style={[styles.emptyIconContainer, { backgroundColor: colors.gray }]}>
+        <Ionicons name="chatbubbles-outline" size={60} color={colors.textLight} />
       </View>
-      <Text style={styles.emptyTitle}>No conversations yet</Text>
-      <Text style={styles.emptyText}>
-        When you contact someone about an item,{"\n"}your conversations will
-        appear here
+      <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+        No conversations yet
+      </Text>
+      <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+        When you contact someone about an item,{"\n"}your conversations will appear here
       </Text>
       <TouchableOpacity
-        style={styles.browseButton}
+        style={[styles.browseButton, { backgroundColor: colors.primary }]}
         onPress={() => router.push("/home")}
       >
         <Text style={styles.browseButtonText}>Browse Items</Text>
@@ -248,20 +184,14 @@ export default function ConversationsScreen() {
     </View>
   );
 
-  if (loading) {
-    return <ConversationSkeleton />;
-  }
+  if (loading) return <ConversationSkeleton />;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.white, borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Messages</Text>
         <TouchableOpacity style={styles.headerButton}>
-          <Ionicons
-            name="search-outline"
-            size={24}
-            color={Colors.textPrimary}
-          />
+          <Ionicons name="search-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -281,16 +211,7 @@ export default function ConversationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -298,164 +219,61 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 15,
-    backgroundColor: Colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: Colors.textPrimary,
-  },
+  headerTitle: { fontSize: 28, fontWeight: "700" },
   headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
+    width: 40, height: 40, borderRadius: 20,
+    justifyContent: "center", alignItems: "center",
   },
-  listContent: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-  },
+  listContent: { flexGrow: 1, paddingHorizontal: 20 },
   conversationItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.white,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
-  unreadItem: {
-    backgroundColor: "rgba(10, 22, 40, 0.02)",
-  },
-  avatarContainer: {
-    position: "relative",
-    marginRight: 14,
-  },
+  avatarContainer: { position: "relative", marginRight: 14 },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 56, height: 56, borderRadius: 28,
+    justifyContent: "center", alignItems: "center",
   },
-  avatarPlaceholder: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: Colors.white,
-  },
+  avatarText: { fontSize: 20, fontWeight: "600", color: "#FFFFFF" },
   unreadDot: {
-    position: "absolute",
-    top: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#4CAF50",
-    borderWidth: 2,
-    borderColor: Colors.white,
+    position: "absolute", top: 2, right: 2,
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: "#4CAF50", borderWidth: 2,
   },
-  conversationInfo: {
-    flex: 1,
-  },
+  conversationInfo: { flex: 1 },
   conversationHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "baseline",
     marginBottom: 6,
   },
-  userName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: Colors.textPrimary,
-    flex: 1,
-    marginRight: 8,
-  },
-  timeText: {
-    fontSize: 11,
-    color: Colors.textLight,
-  },
+  userName: { fontSize: 16, fontWeight: "600", flex: 1, marginRight: 8 },
+  timeText: { fontSize: 11 },
   itemTitleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginBottom: 4,
+    flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4,
   },
-  itemTitle: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: "500",
-    flex: 1,
-  },
-  lastMessageContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  lastMessage: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    flex: 1,
-  },
-  unreadText: {
-    color: Colors.textPrimary,
-    fontWeight: "500",
-  },
+  itemTitle: { fontSize: 12, fontWeight: "500", flex: 1 },
+  lastMessageContainer: { flexDirection: "row", alignItems: "center", gap: 4 },
+  lastMessage: { fontSize: 13, flex: 1 },
   unreadBadge: {
-    backgroundColor: Colors.primary,
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
-    paddingHorizontal: 7,
+    minWidth: 24, height: 24, borderRadius: 12,
+    justifyContent: "center", alignItems: "center",
+    marginLeft: 8, paddingHorizontal: 7,
   },
-  unreadBadgeText: {
-    color: Colors.white,
-    fontSize: 12,
-    fontWeight: "700",
-  },
+  unreadBadgeText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
   emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 80,
+    flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80,
   },
   emptyIconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "rgba(10, 22, 40, 0.05)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 24,
+    width: 100, height: 100, borderRadius: 50,
+    justifyContent: "center", alignItems: "center", marginBottom: 24,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.textPrimary,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  browseButton: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 25,
-  },
-  browseButtonText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: "600",
-  },
+  emptyTitle: { fontSize: 20, fontWeight: "700", marginBottom: 8 },
+  emptyText: { fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 24 },
+  browseButton: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 25 },
+  browseButtonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "600" },
 });

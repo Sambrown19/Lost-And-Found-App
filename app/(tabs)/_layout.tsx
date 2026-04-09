@@ -1,17 +1,19 @@
+import { useTheme } from "@/context/ThemeContext";
 import { Tabs } from "expo-router";
 import { Image } from "react-native";
-import Colors from "../../constants/Colors";
 
 export default function TabLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textLight,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textLight,
         tabBarStyle: {
-          backgroundColor: Colors.white,
+          backgroundColor: colors.white,
           borderTopWidth: 1,
-          borderTopColor: Colors.border,
+          borderTopColor: colors.border,
           paddingBottom: 5,
           paddingTop: 5,
           height: 60,
@@ -33,7 +35,7 @@ export default function TabLayout() {
               style={{
                 width: 24,
                 height: 24,
-                tintColor: focused ? Colors.primary : Colors.textLight,
+                tintColor: focused ? colors.primary : colors.textLight,
               }}
             />
           ),
@@ -50,7 +52,7 @@ export default function TabLayout() {
               style={{
                 width: 24,
                 height: 24,
-                tintColor: focused ? Colors.primary : Colors.textLight,
+                tintColor: focused ? colors.primary : colors.textLight,
               }}
             />
           ),
@@ -66,7 +68,7 @@ export default function TabLayout() {
               style={{
                 width: 24,
                 height: 24,
-                tintColor: focused ? Colors.primary : Colors.textLight,
+                tintColor: focused ? colors.primary : colors.textLight,
               }}
             />
           ),
