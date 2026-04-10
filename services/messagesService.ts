@@ -5,6 +5,7 @@ import {
   DATABASE_ID,
   databases,
   MESSAGES_COLLECTION_ID,
+  USERS_COLLECTION_ID,
 } from "../config/appwrite";
 
 export interface Message {
@@ -31,9 +32,9 @@ export interface Conversation {
   lastMessage?: string;
   lastMessageTime?: string;
   unreadCount: number;
+  unreadFor?: string;
 }
 
-// Send a message
 export const sendMessage = async (
   conversationId: string,
   receiverId: string,
@@ -63,12 +64,15 @@ export const sendMessage = async (
       },
     );
 
-    // Update conversation's last message and increment unread count for receiver
     const conversation = await databases.getDocument(
       DATABASE_ID,
       CONVERSATIONS_COLLECTION_ID,
       conversationId,
     );
+
+    const currentUnread = conversation.unreadFor === receiverId
+      ? (conversation.unreadCount || 0) + 1
+      : 1;
 
     await databases.updateDocument(
       DATABASE_ID,
@@ -77,7 +81,8 @@ export const sendMessage = async (
       {
         lastMessage: messageText,
         lastMessageTime: new Date().toISOString(),
-        unreadCount: (conversation.unreadCount || 0) + 1,
+        unreadCount: currentUnread,
+        unreadFor: receiverId,
       },
     );
 
@@ -87,8 +92,6 @@ export const sendMessage = async (
     throw error;
   }
 };
-
-// services/messagesService.ts
 
 export const getOrCreateConversation = async (
   otherUserId: string,
@@ -104,9 +107,18 @@ export const getOrCreateConversation = async (
       throw new Error("You cannot start a conversation with yourself.");
     }
 
-    // Sort participants for consistency
+    // Fetch current user's fullName from users collection
+    const currentUserProfile = await databases.listDocuments(
+      DATABASE_ID,
+      USERS_COLLECTION_ID,
+      [Query.equal("userId", user.$id)],
+    );
+    const currentUserName = currentUserProfile.documents.length > 0
+      ? currentUserProfile.documents[0].fullName
+      : user.name; // fallback to auth name
+
     const unsorted = [
-      { id: user.$id, name: user.name },
+      { id: user.$id, name: currentUserName },
       { id: otherUserId, name: otherUserName },
     ];
     const sorted = unsorted.sort((a, b) => a.id.localeCompare(b.id));
@@ -114,7 +126,6 @@ export const getOrCreateConversation = async (
     const participants = sorted.map((p) => p.id);
     const participantNames = sorted.map((p) => p.name).join(",");
 
-    // Check if conversation exists for this specific item
     const queries = [
       Query.contains("participants", participants[0]),
       Query.contains("participants", participants[1]),
@@ -132,6 +143,13 @@ export const getOrCreateConversation = async (
     );
 
     if (existingConversations.documents.length > 0) {
+      // Update participantNames in case they changed
+      await databases.updateDocument(
+        DATABASE_ID,
+        CONVERSATIONS_COLLECTION_ID,
+        existingConversations.documents[0].$id,
+        { participantNames },
+      );
       return existingConversations.documents[0];
     }
 
@@ -148,6 +166,7 @@ export const getOrCreateConversation = async (
         lastMessage: "",
         lastMessageTime: new Date().toISOString(),
         unreadCount: 0,
+        unreadFor: "",
       },
     );
 
@@ -158,30 +177,24 @@ export const getOrCreateConversation = async (
   }
 };
 
-// Updated getUserConversations - Remove participantIds reference
 export const getUserConversations = async () => {
   try {
     const user = await account.get();
     console.log("Current user ID:", user.$id);
 
-    // Get all conversations
     const conversations = await databases.listDocuments(
       DATABASE_ID,
       CONVERSATIONS_COLLECTION_ID,
       [Query.orderDesc("lastMessageTime"), Query.limit(100)],
     );
 
-    // Filter to only show conversations where user is a participant
     const userConversations = conversations.documents.filter((conv) => {
       if (conv.participants && Array.isArray(conv.participants)) {
         return conv.participants.includes(user.$id);
       }
-
-      // Handle participants as string (if stored that way)
       if (conv.participants && typeof conv.participants === "string") {
         return conv.participants.includes(user.$id);
       }
-
       return false;
     });
 
@@ -193,7 +206,6 @@ export const getUserConversations = async () => {
   }
 };
 
-// Get messages for a conversation
 export const getConversationMessages = async (conversationId: string) => {
   try {
     const messages = await databases.listDocuments(
@@ -205,7 +217,6 @@ export const getConversationMessages = async (conversationId: string) => {
         Query.limit(100),
       ],
     );
-
     return messages.documents;
   } catch (error) {
     console.error("Get messages error:", error);
@@ -213,12 +224,10 @@ export const getConversationMessages = async (conversationId: string) => {
   }
 };
 
-// Mark messages as read for a conversation
 export const markMessagesAsRead = async (conversationId: string) => {
   try {
     const user = await account.get();
 
-    // Get unread messages where current user is receiver
     const messages = await databases.listDocuments(
       DATABASE_ID,
       MESSAGES_COLLECTION_ID,
@@ -229,7 +238,6 @@ export const markMessagesAsRead = async (conversationId: string) => {
       ],
     );
 
-    // Mark each unread message as read
     for (const message of messages.documents) {
       await databases.updateDocument(
         DATABASE_ID,
@@ -239,13 +247,20 @@ export const markMessagesAsRead = async (conversationId: string) => {
       );
     }
 
-    // Reset unread count in conversation
-    await databases.updateDocument(
+    const conversation = await databases.getDocument(
       DATABASE_ID,
       CONVERSATIONS_COLLECTION_ID,
       conversationId,
-      { unreadCount: 0 },
     );
+
+    if (conversation.unreadFor === user.$id) {
+      await databases.updateDocument(
+        DATABASE_ID,
+        CONVERSATIONS_COLLECTION_ID,
+        conversationId,
+        { unreadCount: 0, unreadFor: "" },
+      );
+    }
   } catch (error) {
     console.error("Mark as read error:", error);
   }

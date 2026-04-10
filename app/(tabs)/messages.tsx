@@ -55,36 +55,52 @@ export default function ConversationsScreen() {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState("");
 
-  const loadConversations = async () => {
+  const loadConversations = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const user = await account.get();
       setCurrentUserId(user.$id);
       const data = await getUserConversations();
       setConversations(data);
     } catch (error) {
       console.error("Load conversations error:", error);
-      Alert.alert("Error", "Failed to load conversations");
+      if (showLoading) Alert.alert("Error", "Failed to load conversations");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
-  useFocusEffect(useCallback(() => { loadConversations(); }, []));
+  useFocusEffect(
+    useCallback(() => {
+      loadConversations();
+
+      const interval = setInterval(() => {
+        loadConversations(false);
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }, [])
+  );
 
   const getOtherParticipant = (conversation: any) => {
-    let participants = conversation.participants;
-    if (typeof participants === "string") participants = participants.split(",");
-    const otherUserId = participants?.find((id: string) => id !== currentUserId);
-    let names = conversation.participantNames;
-    if (typeof names === "string") names = names.split(",");
-    const otherUserName = names?.find((_: any, index: number) => participants?.[index] !== currentUserId) || "User";
-    return { otherUserId, otherUserName };
-  };
+  let participants: string[] = Array.isArray(conversation.participants)
+    ? conversation.participants
+    : (conversation.participants as string).split(",");
+
+  let names: string[] = Array.isArray(conversation.participantNames)
+    ? conversation.participantNames
+    : (conversation.participantNames as string).split(",");
+
+  const otherIndex = participants[0] === currentUserId ? 1 : 0;
+  const otherUserId = participants[otherIndex] || "";
+  const otherUserName = names[otherIndex] || "User";
+
+  return { otherUserId, otherUserName };
+};
 
   const renderConversation = ({ item }: { item: any }) => {
     const { otherUserId, otherUserName } = getOtherParticipant(item);
-    const hasUnread = item.unreadCount > 0;
+    const hasUnread = item.unreadCount > 0 && item.unreadFor === currentUserId;
     const avatarColor = getRandomColor(otherUserId || otherUserName);
 
     return (
@@ -119,8 +135,11 @@ export default function ConversationsScreen() {
         <View style={styles.conversationInfo}>
           <View style={styles.conversationHeader}>
             <Text
-              style={[styles.userName, { color: colors.textPrimary },
-                hasUnread && { fontWeight: "700" }]}
+              style={[
+                styles.userName,
+                { color: colors.textPrimary },
+                hasUnread && { fontWeight: "700" },
+              ]}
               numberOfLines={1}
             >
               {otherUserName}
@@ -144,8 +163,11 @@ export default function ConversationsScreen() {
               <Ionicons name="chatbubble-outline" size={12} color={colors.textLight} />
             )}
             <Text
-              style={[styles.lastMessage, { color: colors.textSecondary },
-                hasUnread && { color: colors.textPrimary, fontWeight: "500" }]}
+              style={[
+                styles.lastMessage,
+                { color: colors.textSecondary },
+                hasUnread && { color: colors.textPrimary, fontWeight: "500" },
+              ]}
               numberOfLines={1}
             >
               {item.lastMessage || "Tap to start conversation"}

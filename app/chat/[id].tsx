@@ -59,45 +59,47 @@ export default function ChatDetailScreen() {
   }, [id]);
 
   const initChat = async () => {
-    try {
-      const user = await account.get();
-      setCurrentUserId(user.$id);
+  try {
+    const user = await account.get();
+    setCurrentUserId(user.$id);
 
-      // Load conversation to derive the other user dynamically
-      const conversation = await databases.getDocument(
-        DATABASE_ID,
-        CONVERSATIONS_COLLECTION_ID,
-        id as string,
-      );
+    const conversation = await databases.getDocument(
+      DATABASE_ID,
+      CONVERSATIONS_COLLECTION_ID,
+      id as string,
+    );
 
-      const participants: string[] = conversation.participants;
-      const participantNames: string[] = conversation.participantNames.split(",");
+    const participants: string[] = conversation.participants;
+    const participantNames: string[] = conversation.participantNames.split(",");
 
-      const otherIndex = participants[0] === user.$id ? 1 : 0;
-      setOtherUserId(participants[otherIndex]);
-      setOtherUserName(participantNames[otherIndex]);
+    const otherIndex = participants[0] === user.$id ? 1 : 0;
+    setOtherUserId(participants[otherIndex]);
+    setOtherUserName(participantNames[otherIndex]);
 
-      await loadMessages();
-    } catch (error) {
-      console.error("Init chat error:", error);
-    }
-  };
-
-  const loadMessages = async (showLoading = true) => {
-    try {
-      if (showLoading) setLoading(true);
-      const data = await getConversationMessages(id as string);
-      setMessages(data);
+    // Only mark as read if unread messages are FOR the current user
+    if (conversation.unreadFor === user.$id && conversation.unreadCount > 0) {
       await markMessagesAsRead(id as string);
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false });
-      }, 100);
-    } catch (error) {
-      console.error("Load messages error:", error);
-    } finally {
-      if (showLoading) setLoading(false);
     }
-  };
+
+    await loadMessages();
+  } catch (error) {
+    console.error("Init chat error:", error);
+  }
+};
+  const loadMessages = async (showLoading = true) => {
+  try {
+    if (showLoading) setLoading(true);
+    const data = await getConversationMessages(id as string);
+    setMessages(data);
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: false });
+    }, 100);
+  } catch (error) {
+    console.error("Load messages error:", error);
+  } finally {
+    if (showLoading) setLoading(false);
+  }
+};
 
   const handleSend = async () => {
     if (!newMessage.trim()) return;
@@ -270,6 +272,7 @@ export default function ChatDetailScreen() {
         <TouchableOpacity
           style={styles.headerCenter}
           onPress={() => {
+            console.log("Navigating to profile of:", otherUserId);
             if (otherUserId) {
               router.push({
                 pathname: "/profile",

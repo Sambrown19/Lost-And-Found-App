@@ -49,19 +49,41 @@ export const createUserProfile = async (
   }
 };
 
-export const getUserProfile = async (): Promise<UserProfile | null> => {
-  const user = await account.get();
-  const response = await databases.listDocuments(
-    DATABASE_ID,
-    USERS_COLLECTION_ID,
-    [Query.equal("userId", user.$id)],
-  );
-
-  if (response.documents.length > 0) {
-    return response.documents[0] as any;
+export const getUserProfileById = async (userId: string): Promise<UserProfile | null> => {
+  try {
+    const response = await databases.listDocuments(
+      DATABASE_ID,
+      USERS_COLLECTION_ID,
+      [Query.equal("userId", userId)]
+    );
+    if (response.documents.length > 0) {
+      return response.documents[0] as any;
+    }
+    return null;
+  } catch (error) {
+    console.error("Get profile by ID error:", error);
+    return null;
   }
+};
 
-  return null;
+export const getUserProfile = async (): Promise<UserProfile | null> => {
+  try {
+    const user = await account.get();
+    const response = await databases.listDocuments(
+      DATABASE_ID,
+      USERS_COLLECTION_ID,
+      [Query.equal("userId", user.$id)],
+    );
+
+    if (response.documents.length > 0) {
+      return response.documents[0] as any;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Get profile error:", error);
+    return null;
+  }
 };
 
 
