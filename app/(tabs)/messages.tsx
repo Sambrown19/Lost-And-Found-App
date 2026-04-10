@@ -4,15 +4,18 @@ import { useTheme } from "@/context/ThemeContext";
 import { getUserConversations } from "@/services/messagesService";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { databases, DATABASE_ID, USERS_COLLECTION_ID } from "@/config/appwrite";
+import { Query } from "react-native-appwrite";
 
 const getInitials = (name: string) => {
   if (!name) return "?";
@@ -54,6 +57,24 @@ export default function ConversationsScreen() {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState("");
+  const [userImages, setUserImages] = useState<Record<string, string>>({});
+
+  const fetchUserProfileImage = async (userId: string) => {
+    if (userImages[userId]) return userImages[userId];
+    try {
+      const response = await databases.listDocuments(
+        DATABASE_ID,
+        USERS_COLLECTION_ID,
+        [Query.equal("userId", userId)]
+      );
+      const imageUrl = response.documents[0]?.profileImage || "";
+      setUserImages(prev => ({ ...prev, [userId]: imageUrl }));
+      return imageUrl;
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      return "";
+    }
+  };
 
   const loadConversations = async (showLoading = true) => {
     try {
@@ -62,6 +83,17 @@ export default function ConversationsScreen() {
       setCurrentUserId(user.$id);
       const data = await getUserConversations();
       setConversations(data);
+      
+      // Fetch profile images for all participants
+      for (const conv of data) {
+        let participants: string[] = Array.isArray(conv.participants)
+          ? conv.participants
+          : (conv.participants as string).split(",");
+        const otherId = participants[0] === user.$id ? participants[1] : participants[0];
+        if (otherId) {
+          await fetchUserProfileImage(otherId);
+        }
+      }
     } catch (error) {
       console.error("Load conversations error:", error);
       if (showLoading) Alert.alert("Error", "Failed to load conversations");
@@ -83,25 +115,26 @@ export default function ConversationsScreen() {
   );
 
   const getOtherParticipant = (conversation: any) => {
-  let participants: string[] = Array.isArray(conversation.participants)
-    ? conversation.participants
-    : (conversation.participants as string).split(",");
+    let participants: string[] = Array.isArray(conversation.participants)
+      ? conversation.participants
+      : (conversation.participants as string).split(",");
 
-  let names: string[] = Array.isArray(conversation.participantNames)
-    ? conversation.participantNames
-    : (conversation.participantNames as string).split(",");
+    let names: string[] = Array.isArray(conversation.participantNames)
+      ? conversation.participantNames
+      : (conversation.participantNames as string).split(",");
 
-  const otherIndex = participants[0] === currentUserId ? 1 : 0;
-  const otherUserId = participants[otherIndex] || "";
-  const otherUserName = names[otherIndex] || "User";
+    const otherIndex = participants[0] === currentUserId ? 1 : 0;
+    const otherUserId = participants[otherIndex] || "";
+    const otherUserName = names[otherIndex] || "User";
 
-  return { otherUserId, otherUserName };
-};
+    return { otherUserId, otherUserName };
+  };
 
   const renderConversation = ({ item }: { item: any }) => {
     const { otherUserId, otherUserName } = getOtherParticipant(item);
     const hasUnread = item.unreadCount > 0 && item.unreadFor === currentUserId;
     const avatarColor = getRandomColor(otherUserId || otherUserName);
+    const profileImage = userImages[otherUserId];
 
     return (
       <TouchableOpacity
@@ -124,9 +157,13 @@ export default function ConversationsScreen() {
         })}
       >
         <View style={styles.avatarContainer}>
-          <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
-            <Text style={styles.avatarText}>{getInitials(otherUserName)}</Text>
-          </View>
+          {profileImage ? (
+            <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
+              <Text style={styles.avatarText}>{getInitials(otherUserName)}</Text>
+            </View>
+          )}
           {hasUnread && (
             <View style={[styles.unreadDot, { borderColor: colors.white }]} />
           )}
@@ -259,6 +296,11 @@ const styles = StyleSheet.create({
   avatar: {
     width: 56, height: 56, borderRadius: 28,
     justifyContent: "center", alignItems: "center",
+  },
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   avatarText: { fontSize: 20, fontWeight: "600", color: "#FFFFFF" },
   unreadDot: {

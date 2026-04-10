@@ -1,4 +1,5 @@
 import { ID, Query } from "react-native-appwrite";
+import { sendPushNotification } from "./notificationsService";
 import {
   account,
   CONVERSATIONS_COLLECTION_ID,
@@ -42,6 +43,8 @@ export const sendMessage = async (
   messageText: string,
   itemId?: string,
   itemTitle?: string,
+  mediaUrl?: string,
+  mediaType?: string,
 ) => {
   try {
     const user = await account.get();
@@ -61,6 +64,8 @@ export const sendMessage = async (
         itemTitle: itemTitle || "",
         read: false,
         createdAt: new Date().toISOString(),
+        mediaUrl: mediaUrl || "",
+        mediaType: mediaType || "",
       },
     );
 
@@ -86,13 +91,19 @@ export const sendMessage = async (
       },
     );
 
+    await sendPushNotification(
+      receiverId,
+      user.name,
+      messageText,
+      conversationId,
+    );
+
     return message;
   } catch (error) {
     console.error("Send message error:", error);
     throw error;
   }
 };
-
 export const getOrCreateConversation = async (
   otherUserId: string,
   otherUserName: string,

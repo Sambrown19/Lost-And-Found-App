@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { account } from '../../config/appwrite';
 import { getInitials, getUserProfile } from '../../services/userService';
+import { getUserItems } from '../../services/itemsService';
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -24,9 +25,15 @@ export default function AccountScreen() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [stats, setStats] = useState({
+    found: 0,
+    lost: 0,
+    returned: 0,
+  });
 
   useEffect(() => {
     loadUserProfile();
+    loadUserStats();
   }, []);
 
   const loadUserProfile = async () => {
@@ -35,6 +42,29 @@ export default function AccountScreen() {
       setUserProfile(profile);
     } catch (error) {
       console.error('Load profile error:', error);
+    }
+  };
+
+  const loadUserStats = async () => {
+    try {
+      const items = await getUserItems();
+      
+      // Calculate real stats from user's items
+      const lost = items.filter((item: any) => 
+        item.type === 'lost' && item.status !== 'resolved' && item.status !== 'claimed'
+      ).length;
+      
+      const found = items.filter((item: any) => 
+        item.type === 'found' && item.status !== 'resolved' && item.status !== 'claimed'
+      ).length;
+      
+      const returned = items.filter((item: any) => 
+        item.status === 'resolved' || item.status === 'claimed'
+      ).length;
+      
+      setStats({ lost, found, returned });
+    } catch (error) {
+      console.error('Load stats error:', error);
     } finally {
       setLoading(false);
     }
@@ -101,12 +131,15 @@ export default function AccountScreen() {
                 {userProfile?.email || ''}
               </Text>
             </View>
-            <TouchableOpacity style={[styles.editIconButton, { backgroundColor: colors.gray }]}>
+            <TouchableOpacity 
+              style={[styles.editIconButton, { backgroundColor: colors.gray }]}
+              onPress={() => router.push('/profile')}
+            >
               <Ionicons name="pencil" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          {/* Active Summary */}
+          {/* Active Summary - Now with Real Data */}
           <View style={[styles.summarySection, { borderTopColor: colors.border }]}>
             <View style={styles.summaryHeader}>
               <Ionicons name="bar-chart-outline" size={16} color={colors.textSecondary} />
@@ -115,20 +148,30 @@ export default function AccountScreen() {
               </Text>
             </View>
             <View style={styles.statsRow}>
-              {[
-                { number: '12', label: 'Items Found' },
-                { number: '5', label: 'Items Lost' },
-                { number: '8', label: 'Items Returned' },
-              ].map((stat) => (
-                <View key={stat.label} style={styles.statItem}>
-                  <Text style={[styles.statNumber, { color: colors.textPrimary }]}>
-                    {stat.number}
-                  </Text>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                    {stat.label}
-                  </Text>
-                </View>
-              ))}
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>
+                  {stats.found}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  Items Found
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>
+                  {stats.lost}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  Items Lost
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>
+                  {stats.returned}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  Items Returned
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -145,6 +188,19 @@ export default function AccountScreen() {
               <Text style={[styles.menuText, { color: colors.textPrimary }]}>Profile</Text>
               <Text style={[styles.menuSubtext, { color: colors.textSecondary }]}>
                 Change profile picture & username
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.push('/(tabs)/home')} style={styles.menuItem}>
+            <View style={[styles.menuIconContainer, { backgroundColor: colors.gray }]}>
+              <Ionicons name="home-outline" size={22} color={colors.textPrimary} />
+            </View>
+            <View style={styles.menuTextContainer}>
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>Browse Items</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textSecondary }]}>
+                View all lost and found items
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textLight} />

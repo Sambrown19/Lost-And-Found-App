@@ -10,7 +10,16 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mante.lostandfound"
+      "bundleIdentifier": "com.mante.lostandfound",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ],
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to share images in chat",
+        "NSCameraUsageDescription": "This app needs access to your camera to take photos",
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone for recording videos"
+      }
     },
     "android": {
       "package": "com.mante.lostandfound",
@@ -21,7 +30,13 @@
         "monochromeImage": "./assets/images/logo.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -32,7 +47,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -41,11 +56,34 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo.png",
+          "color": "#0A1628",
+          "sounds": []
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app needs access to your photos to share images in chat.",
+          "cameraPermission": "The app needs access to your camera to take photos.",
+          "microphonePermission": "The app needs access to your microphone for recording videos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "286a06f4-2b86-4a26-b519-4507759b4017"
+      }
+    },
+    "owner": "sambrown_ofc"
   }
 }
