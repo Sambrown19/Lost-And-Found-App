@@ -15,6 +15,7 @@ import {
   View,
   Alert,
   Modal,
+  Linking,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { account, DATABASE_ID, CONVERSATIONS_COLLECTION_ID, databases, storage, STORAGE_BUCKET_ID, USERS_COLLECTION_ID } from "../../config/appwrite";
@@ -185,106 +186,118 @@ export default function ChatDetailScreen() {
   };
 
   const uploadMediaToAppwrite = async (uri: string, fileName: string, mimeType: string) => {
+    // Use the exact same pattern that works on report-lost & profile upload:
+    // just pass the raw URI with size:0 — the SDK handles it.
+    const name = fileName || `file_${Date.now()}.jpg`;
+    const type = mimeType || "image/jpeg";
+
+    console.log(`[Upload] URI: ${uri}, name: ${name}, type: ${type}`);
+
     const file = {
-      uri,
-      name: fileName,
-      type: mimeType,
+      uri: uri,
+      name: name,
+      type: type,
       size: 0,
     };
 
-    const result = await storage.createFile(
-      STORAGE_BUCKET_ID,
-      ID.unique(),
-      file,
-    );
-
-    const endpoint = process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT;
-    const projectId = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID;
-    return `${endpoint}/storage/buckets/${STORAGE_BUCKET_ID}/files/${result.$id}/view?project=${projectId}`;
+    try {
+      const result = await storage.createFile(STORAGE_BUCKET_ID, ID.unique(), file);
+      const endpoint = process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT;
+      const projectId = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID;
+      const url = `${endpoint}/storage/buckets/${STORAGE_BUCKET_ID}/files/${result.$id}/view?project=${projectId}`;
+      console.log("[Upload] Success:", url);
+      return url;
+    } catch (err: any) {
+      console.error("[Upload] Appwrite Error:", JSON.stringify(err));
+      throw err;
+    }
   };
 
-  const closeModalAndWait = () => {
+  // Helper: close the media options modal and wait for iOS to fully dismiss it
+  // before presenting another native modal (image picker / camera).
+  const closeModalAndWait = (): Promise<void> => {
     setShowMediaOptions(false);
-    return new Promise<void>(resolve => setTimeout(resolve, 500));
+    return new Promise((resolve) => setTimeout(resolve, 600));
   };
 
   const handlePickImage = async () => {
-    await closeModalAndWait();
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission required", "Photo library access is needed to pick images.");
-        return;
-      }
+      await closeModalAndWait();
+
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"] as any,
+        mediaTypes: ['images'],
         allowsEditing: false,
         quality: 0.8,
       });
-      if (!result.canceled) {
-        await sendMediaMessage(
-          result.assets[0].uri,
-          `image_${Date.now()}.jpg`,
-          "image/jpeg",
-          "image",
-        );
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        const name = asset.fileName || `img_${Date.now()}.jpg`;
+        const type = asset.mimeType || "image/jpeg";
+        console.log("[Gallery] Picked image:", asset.uri);
+        await sendMediaMessage(asset.uri, name, type, "image");
       }
-    } catch (error) {
-      console.error("Pick image error:", error);
-      Alert.alert("Error", "Failed to pick image");
+    } catch (error: any) {
+      console.error("Pick Image Error:", error);
+      Alert.alert("Error", "Failed to pick image: " + (error?.message || 'Unknown error'));
     }
   };
 
   const handlePickVideo = async () => {
-    await closeModalAndWait();
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission required", "Photo library access is needed to pick videos.");
-        return;
-      }
+      await closeModalAndWait();
+
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["videos"] as any,
+        mediaTypes: ['videos'],
         allowsEditing: false,
         quality: 0.8,
       });
-      if (!result.canceled) {
-        await sendMediaMessage(
-          result.assets[0].uri,
-          `video_${Date.now()}.mp4`,
-          "video/mp4",
-          "video",
-        );
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        const name = asset.fileName || `vid_${Date.now()}.mp4`;
+        const type = asset.mimeType || "video/mp4";
+        console.log("[Gallery] Picked video:", asset.uri);
+        await sendMediaMessage(asset.uri, name, type, "video");
       }
-    } catch (error) {
-      console.error("Pick video error:", error);
-      Alert.alert("Error", "Failed to pick video");
+    } catch (error: any) {
+      console.error("Pick Video Error:", error);
+      Alert.alert("Error", "Failed to pick video: " + (error?.message || 'Unknown error'));
     }
   };
 
   const handleTakePhoto = async () => {
-    await closeModalAndWait();
     try {
+      await closeModalAndWait();
+
+      // Request camera permission
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission required", "Camera permission is needed to take photos");
+      if (status !== 'granted') {
+        Alert.alert(
+          'Camera Access Required',
+          'Please allow camera access to take photos. You can enable it in your device Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ],
+        );
         return;
       }
+
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: false,
         quality: 0.8,
       });
-      if (!result.canceled) {
-        await sendMediaMessage(
-          result.assets[0].uri,
-          `photo_${Date.now()}.jpg`,
-          "image/jpeg",
-          "image",
-        );
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        const name = asset.fileName || `photo_${Date.now()}.jpg`;
+        const type = asset.mimeType || "image/jpeg";
+        await sendMediaMessage(asset.uri, name, type, "image");
       }
-    } catch (error) {
-      console.error("Take photo error:", error);
-      Alert.alert("Error", "Failed to take photo");
+    } catch (error: any) {
+      console.error("Camera Error:", error);
+      Alert.alert("Error", "Failed to open camera: " + (error?.message || 'Unknown error'));
     }
   };
 
@@ -313,9 +326,9 @@ export default function ChatDetailScreen() {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Send media error:", error);
-      Alert.alert("Error", "Failed to send media");
+      Alert.alert("Upload Failed", error?.message || JSON.stringify(error) || "Failed to send media");
     } finally {
       setUploadingMedia(false);
     }
@@ -606,11 +619,12 @@ export default function ChatDetailScreen() {
         animationType="slide"
         onRequestClose={() => setShowMediaOptions(false)}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowMediaOptions(false)}
-        >
+        <View style={styles.modalContentWrapper}>
+          <TouchableOpacity 
+            style={StyleSheet.absoluteFill} 
+            activeOpacity={1} 
+            onPress={() => setShowMediaOptions(false)} 
+          />
           <View style={[styles.mediaOptionsContainer, { backgroundColor: colors.white }]}>
             <Text style={[styles.mediaOptionsTitle, { color: colors.textPrimary }]}>
               Send Media
@@ -640,7 +654,7 @@ export default function ChatDetailScreen() {
               <Text style={[styles.cancelButtonText, { color: colors.textPrimary }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </KeyboardAvoidingView>
   );
@@ -715,9 +729,12 @@ const styles = StyleSheet.create({
   input: { flex: 1, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, fontSize: 15, maxHeight: 100 },
   sendButton: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
   sendButtonDisabled: { opacity: 0.5 },
-  modalOverlay: {
+  modalContentWrapper: {
     flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
+  },
+  modalOverlay: {
+    flex: 1, backgroundColor: "transparent",
   },
   mediaOptionsContainer: {
     borderTopLeftRadius: 20, borderTopRightRadius: 20,

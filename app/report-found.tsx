@@ -84,7 +84,7 @@ export default function ReportFoundScreen() {
     });
     if (!result.canceled) {
       const uploadedUrls = (
-        await Promise.all(result.assets.map((asset) => uploadImage(asset)))
+        await Promise.all(result.assets.map((asset) => uploadImage(asset.uri)))
       ).flat();
       setPhotos([...photos, ...uploadedUrls]);
     }

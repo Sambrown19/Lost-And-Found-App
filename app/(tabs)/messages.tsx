@@ -249,7 +249,7 @@ export default function ConversationsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.white, borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Messages</Text>
-        <TouchableOpacity style={styles.headerButton}>
+        <TouchableOpacity style={styles.headerButton} onPress={() => Alert.alert('Search', 'Conversation search coming soon!')}>
           <Ionicons name="search-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>

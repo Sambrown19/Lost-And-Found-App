@@ -7,7 +7,6 @@
     "icon": "./assets/images/logo.png",
     "scheme": "lostandfoundapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mante.lostandfound",
@@ -17,8 +16,10 @@
           "remote-notification"
         ],
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to share images in chat",
+        "NSPhotoLibraryAddUsageDescription": "This app may save media to your photo library",
         "NSCameraUsageDescription": "This app needs access to your camera to take photos",
-        "NSMicrophoneUsageDescription": "This app needs access to your microphone for recording videos"
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone for recording videos",
+        "PHPhotoLibraryPreventAutomaticLimitedAccessAlert": true
       }
     },
     "android": {
@@ -29,7 +30,6 @@
         "backgroundImage": "./assets/images/logo.png",
         "monochromeImage": "./assets/images/logo.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "CAMERA",

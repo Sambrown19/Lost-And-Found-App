@@ -1,12 +1,18 @@
-import React, { createContext, useContext } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 
+type ThemePreference = 'light' | 'dark' | 'system';
 type Theme = 'light' | 'dark';
+
+const THEME_STORAGE_KEY = 'app_theme_preference';
 
 interface ThemeContextType {
   theme: Theme;
   isDark: boolean;
   colors: typeof lightColors;
+  themePreference: ThemePreference;
+  setThemePreference: (pref: ThemePreference) => void;
 }
 
 export const lightColors = {
@@ -39,18 +45,46 @@ const ThemeContext = createContext<ThemeContextType>({
   theme: 'light',
   isDark: false,
   colors: lightColors,
+  themePreference: 'system',
+  setThemePreference: () => {},
 });
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const systemScheme = useColorScheme();
-  const isDark = systemScheme === 'dark';
-  const theme: Theme = isDark ? 'dark' : 'light';
+  const [themePreference, setThemePreferenceState] = useState<ThemePreference>('system');
+
+  // Load saved preference on mount
+  useEffect(() => {
+    AsyncStorage.getItem(THEME_STORAGE_KEY).then((saved) => {
+      if (saved === 'light' || saved === 'dark' || saved === 'system') {
+        setThemePreferenceState(saved);
+      }
+    });
+  }, []);
+
+  // Save preference when it changes
+  const setThemePreference = (pref: ThemePreference) => {
+    setThemePreferenceState(pref);
+    AsyncStorage.setItem(THEME_STORAGE_KEY, pref);
+  };
+
+  // Resolve actual theme from preference
+  const resolvedTheme: Theme =
+    themePreference === 'system'
+      ? systemScheme === 'dark'
+        ? 'dark'
+        : 'light'
+      : themePreference;
+
+  const isDark = resolvedTheme === 'dark';
 
   return (
     <ThemeContext.Provider value={{
-      theme,
+      theme: resolvedTheme,
       isDark,
       colors: isDark ? darkColors : lightColors,
+      themePreference,
+      setThemePreference,
     }}>
       {children}
     </ThemeContext.Provider>

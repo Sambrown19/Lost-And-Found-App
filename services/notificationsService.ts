@@ -51,17 +51,37 @@ export const registerForPushNotifications = async () => {
       });
     }
 
-    const token = (
-  await Notifications.getExpoPushTokenAsync({
-    projectId: Constants.expoConfig?.extra?.eas?.projectId,
-  })
-).data;
-    console.log("Push token:", token);
+    // Fetch push token with retry — this often fails in Expo Go due to
+    // network issues or SDK 53+ limitations. It's non-critical.
+    let token: string | null = null;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const result = await Notifications.getExpoPushTokenAsync({
+          projectId: Constants.expoConfig?.extra?.eas?.projectId,
+        });
+        token = result.data;
+        break;
+      } catch (tokenError) {
+        if (attempt === 2) {
+          // After 2 attempts, just log a warning — push is non-critical
+          console.warn(
+            "Push token registration failed (this is expected in Expo Go):",
+            tokenError instanceof Error ? tokenError.message : tokenError,
+          );
+          return null;
+        }
+        // Wait 2s before retrying
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
 
+    if (!token) return null;
+
+    console.log("Push token:", token);
     await savePushToken(token);
     return token;
   } catch (error) {
-    console.error("Register notifications error:", error);
+    console.warn("Register notifications skipped:", error instanceof Error ? error.message : error);
     return null;
   }
 };

@@ -1,9 +1,48 @@
 import { useTheme } from "@/context/ThemeContext";
-import { Tabs } from "expo-router";
-import { Image } from "react-native";
+import { getUserProfile } from "@/services/userService";
+import { Tabs, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, View, Image, Platform } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { account } from "../../config/appwrite";
 
 export default function TabLayout() {
   const { colors } = useTheme();
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const guardCheck = async () => {
+      try {
+        // 1. Must have an active session
+        await account.get();
+
+        // 2. Must have a completed profile in the database
+        const profile = await getUserProfile();
+        if (!profile) {
+          // Account exists but profile setup was never finished
+          router.replace("/(auth)/complete-profile");
+          return;
+        }
+      } catch {
+        // No session at all — send to login
+        router.replace("/(auth)/login");
+        return;
+      } finally {
+        setChecking(false);
+      }
+    };
+
+    guardCheck();
+  }, []);
+
+  if (checking) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <Tabs
@@ -14,15 +53,16 @@ export default function TabLayout() {
           backgroundColor: colors.white,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
+          paddingBottom: Platform.OS === 'ios' ? 25 : 10,
+          paddingTop: 10,
+          height: Platform.OS === 'ios' ? 90 : 70,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: "600",
         },
         headerShown: false,
+        freezeOnBlur: true,
       }}
     >
       <Tabs.Screen
@@ -30,16 +70,26 @@ export default function TabLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ focused }) => (
-            <Image
-              source={require("../../assets/images/home-01.png")}
-              style={{
-                width: 24,
-                height: 24,
-                tintColor: focused ? colors.primary : colors.textLight,
-              }}
+            <Ionicons
+              name={focused ? "home-sharp" : "home-outline"}
+              size={24}
+              color={focused ? colors.primary : colors.textLight}
             />
           ),
           headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="my-items"
+        options={{
+          title: "My Items",
+          tabBarIcon: ({ focused }) => (
+            <Ionicons
+              name={focused ? "file-tray-stacked" : "file-tray-stacked-outline"}
+              size={24}
+              color={focused ? colors.primary : colors.textLight}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -47,13 +97,10 @@ export default function TabLayout() {
         options={{
           title: "Messages",
           tabBarIcon: ({ focused }) => (
-            <Image
-              source={require("../../assets/images/Messages.png")}
-              style={{
-                width: 24,
-                height: 24,
-                tintColor: focused ? colors.primary : colors.textLight,
-              }}
+            <Ionicons
+              name={focused ? "chatbubbles" : "chatbubbles-outline"}
+              size={24}
+              color={focused ? colors.primary : colors.textLight}
             />
           ),
         }}
@@ -63,13 +110,10 @@ export default function TabLayout() {
         options={{
           title: "Account",
           tabBarIcon: ({ focused }) => (
-            <Image
-              source={require("../../assets/images/Account.png")}
-              style={{
-                width: 24,
-                height: 24,
-                tintColor: focused ? colors.primary : colors.textLight,
-              }}
+            <Ionicons
+              name={focused ? "person" : "person-outline"}
+              size={24}
+              color={focused ? colors.primary : colors.textLight}
             />
           ),
         }}

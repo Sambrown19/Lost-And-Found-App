@@ -5,7 +5,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { getAllItems, getItemsByType, Item } from "@/services/itemsService";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import debounce from "lodash.debounce";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -18,8 +18,11 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Alert,
 } from "react-native";
 import { getInitials, getUserProfile } from "../../services/userService";
+import { getUserConversations } from "../../services/messagesService";
+import { account } from "../../config/appwrite";
 
 interface SearchHistory {
   query: string;
@@ -40,6 +43,7 @@ export default function HomeScreen() {
   const [showHistory, setShowHistory] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   const searchInputRef = useRef<TextInput>(null);
   const searchQueryRef = useRef("");
@@ -160,25 +164,68 @@ export default function HomeScreen() {
     }
   };
 
-  const loadUserProfile = async () => {
-    setLoading(true);
+  const loadUserProfile = async (): Promise<boolean> => {
     try {
       const profile = await getUserProfile();
-      if (profile) setUserProfile(profile);
+      if (profile) {
+        setUserProfile(profile);
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error("Load profile error:", error);
-    } finally {
-      setLoading(false);
+      return false;
     }
   };
 
-  useEffect(() => { loadUserProfile(); loadSearchHistory(); }, []);
-  useEffect(() => { loadItems(); }, [activeTab]);
+  // On first mount: load profile + items together so skeleton covers both
+  useEffect(() => {
+    const initialLoad = async () => {
+      setInitialLoading(true);
+      await Promise.all([loadUserProfile(), loadSearchHistory()]);
+      await loadItems();
+    };
+    initialLoad();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const checkUnread = async () => {
+        try {
+          const user = await account.get();
+          const userConvs = await getUserConversations();
+          const hasUnread = userConvs.some(conv => conv.unreadCount > 0 && conv.unreadFor === user.$id);
+          setHasUnreadNotifications(hasUnread);
+        } catch (error) {
+          console.log("Could not load notifications status", error);
+        }
+      };
+      
+      if (userProfile) {
+        checkUnread();
+      }
+    }, [userProfile])
+  );
+
+  // Subsequent tab changes only reload items (not the initial full load)
+  const [firstLoad, setFirstLoad] = useState(true);
+  useEffect(() => {
+    if (firstLoad) { setFirstLoad(false); return; }
+    loadItems();
+  }, [activeTab]);
+
   useEffect(() => { if (!searchQuery) setFilteredItems(items); }, [items, searchQuery]);
 
   if (initialLoading) return <HomeScreenSkeleton />;
 
-  const firstName = userProfile?.fullName?.split(" ")[0] || "User";
+  // Safety net: should never reach here without a profile thanks to tab guard,
+  // but redirect just in case.
+  if (!userProfile) {
+    router.replace("/(auth)/complete-profile");
+    return null;
+  }
+
+  const firstName = userProfile.fullName?.split(" ")[0] || "there";
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -191,15 +238,17 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.white }]}>
         <View style={styles.headerLeft}>
-          {userProfile?.profileImage ? (
-            <Image source={{ uri: userProfile.profileImage }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-              <Text style={styles.avatarText}>
-                {getInitials(userProfile?.fullName || "")}
-              </Text>
-            </View>
-          )}
+          <TouchableOpacity onPress={() => router.push('/profile')}>
+            {userProfile?.profileImage ? (
+              <Image source={{ uri: userProfile.profileImage }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+                <Text style={styles.avatarText}>
+                  {getInitials(userProfile?.fullName || "")}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
           <View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Text style={[styles.greeting, { color: colors.textPrimary }]}>
@@ -214,9 +263,18 @@ export default function HomeScreen() {
             </Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.notificationButton}>
+        <TouchableOpacity
+          style={styles.notificationButton}
+          onPress={() => {
+            if (hasUnreadNotifications) {
+              router.push('/notifications');
+            } else {
+              Alert.alert('Notifications', 'No new notifications');
+            }
+          }}
+        >
           <Ionicons name="notifications-outline" size={24} color={colors.textPrimary} />
-          <View style={styles.notificationBadge} />
+          {hasUnreadNotifications && <View style={styles.notificationBadge} />}
         </TouchableOpacity>
       </View>
 

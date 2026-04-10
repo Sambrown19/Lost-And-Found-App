@@ -20,7 +20,7 @@ import { getUserItems } from '../../services/itemsService';
 
 export default function AccountScreen() {
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, themePreference, setThemePreference } = useTheme();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -206,7 +206,7 @@ export default function AccountScreen() {
             <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
           </TouchableOpacity>
 
-          {/* System Theme Indicator */}
+          {/* Theme Selector */}
           <View style={styles.menuItem}>
             <View style={[styles.menuIconContainer, { backgroundColor: colors.gray }]}>
               <Ionicons
@@ -217,18 +217,43 @@ export default function AccountScreen() {
             </View>
             <View style={styles.menuTextContainer}>
               <Text style={[styles.menuText, { color: colors.textPrimary }]}>
-                Dark Mode
+                Appearance
               </Text>
               <Text style={[styles.menuSubtext, { color: colors.textSecondary }]}>
-                Follows your system settings
+                {themePreference === 'system' ? 'Matches system' : themePreference === 'dark' ? 'Dark mode' : 'Light mode'}
               </Text>
             </View>
-            <Switch
-              value={isDark}
-              disabled={true}
-              trackColor={{ false: '#D0D0D0', true: colors.primary }}
-              thumbColor={colors.white}
-            />
+          </View>
+          <View style={styles.themeOptions}>
+            {(['light', 'dark', 'system'] as const).map((option) => {
+              const isActive = themePreference === option;
+              const icon = option === 'light' ? 'sunny' : option === 'dark' ? 'moon' : 'phone-portrait-outline';
+              const label = option.charAt(0).toUpperCase() + option.slice(1);
+              return (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.themeOption,
+                    { backgroundColor: colors.gray, borderColor: colors.border },
+                    isActive && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  ]}
+                  onPress={() => setThemePreference(option)}
+                >
+                  <Ionicons
+                    name={icon}
+                    size={18}
+                    color={isActive ? '#FFFFFF' : colors.textSecondary}
+                  />
+                  <Text style={[
+                    styles.themeOptionText,
+                    { color: colors.textSecondary },
+                    isActive && { color: '#FFFFFF' },
+                  ]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -254,7 +279,7 @@ export default function AccountScreen() {
             />
           </View>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert('Privacy & Security', 'Manage your data and account privacy settings. Coming soon!')}>
             <View style={[styles.menuIconContainer, { backgroundColor: colors.gray }]}>
               <Ionicons name="lock-closed-outline" size={22} color={colors.textPrimary} />
             </View>
@@ -269,7 +294,7 @@ export default function AccountScreen() {
             <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert('Help & Support', 'Need help? Contact us at support@lostandfound.app\n\nFAQ:\n• How do I report a lost item?\n• How do I claim a found item?\n• How do I verify my account?')}>
             <View style={[styles.menuIconContainer, { backgroundColor: colors.gray }]}>
               <Ionicons name="headset-outline" size={22} color={colors.textPrimary} />
             </View>
@@ -340,6 +365,9 @@ const styles = StyleSheet.create({
   menuTextContainer: { flex: 1 },
   menuText: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
   menuSubtext: { fontSize: 12 },
+  themeOptions: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  themeOption: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 10, borderWidth: 1, gap: 6 },
+  themeOptionText: { fontSize: 13, fontWeight: '600' },
   logoutButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     marginHorizontal: 16, paddingVertical: 16, borderRadius: 16, gap: 8,

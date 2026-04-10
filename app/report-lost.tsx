@@ -127,8 +127,8 @@ export default function ReportLostScreen() {
       const uploadedUrls: string[] = [];
       for (const asset of assets) {
         try {
-          const urls = await uploadImage(asset);
-          uploadedUrls.push(...urls);
+          const url = await uploadImage(asset.uri);
+          uploadedUrls.push(url);
           uploadedCount++;
           setUploadProgress(Math.round((uploadedCount / totalImages) * 100));
         } catch (error) {

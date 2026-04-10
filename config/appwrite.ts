@@ -2,7 +2,7 @@
 
 import { Account, Client, Databases, Storage } from "react-native-appwrite";
 
-const client = new Client();
+export const client = new Client();
 
 const endpoint = process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT;
 const projectId = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID;

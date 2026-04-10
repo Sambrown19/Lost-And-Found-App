@@ -7,7 +7,9 @@ import {
   storage,
   STORAGE_BUCKET_ID,
   USERS_COLLECTION_ID,
+  client,
 } from "../config/appwrite";
+import { Platform } from "react-native";
 export interface Item {
   $id?: string;
   userId: string;
@@ -115,6 +117,21 @@ export const getItemById = async (id: string): Promise<any> => {
   }
 };
 
+export const updateItemStatus = async (id: string, status: "active" | "claimed" | "resolved"): Promise<any> => {
+  try {
+    const response = await databases.updateDocument(
+      DATABASE_ID,
+      ITEMS_COLLECTION_ID,
+      id,
+      { status }
+    );
+    return response;
+  } catch (error) {
+    console.error("Error updating item status:", error);
+    throw error;
+  }
+};
+
 const uriToBlob = async (uri: string): Promise<Blob> => {
   const response = await fetch(uri);
   const blob = await response.blob();
@@ -132,25 +149,31 @@ export const uploadImage = async (imageUri: string) => {
     const fileType = 'image/jpeg';
     
     // Create file object in the format Appwrite expects
+    // Sometimes iOS file:// prefix blocks binary reading in React Native
+    const formattedUri = Platform.OS === 'ios' ? imageUri.replace('file://', '') : imageUri;
+    
     const file = {
-      uri: imageUri,
+      uri: formattedUri,
       name: fileName,
       type: fileType,
-      size: 0, // Size will be handled automatically
+      size: 1024, // Bypass empty checks if any
     };
     
     // Upload using Appwrite SDK
     const result = await storage.createFile(
       STORAGE_BUCKET_ID,
       ID.unique(),
-      file
+      file as any
     );
     
-    // Get the correct view URL
-    const imageUrl = storage.getFileView(STORAGE_BUCKET_ID, result.$id);
-    console.log("Upload successful:", imageUrl);
+    // Explicitly build the public URL to avoid relative routing issues in SDK URL parsers
+    const endpointStr = client.config.endpoint;
+    const projectStr = client.config.project;
     
-    return imageUrl.toString();
+    const finalUrl = `${endpointStr}/storage/buckets/${STORAGE_BUCKET_ID}/files/${result.$id}/view?project=${projectStr}`;
+    console.log("Upload successful:", finalUrl);
+    
+    return finalUrl;
   } catch (error) {
     console.error('Upload error:', error);
     throw error;

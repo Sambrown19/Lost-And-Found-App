@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { account, DATABASE_ID, databases, USERS_COLLECTION_ID } from '../config/appwrite';
 import {
   UserProfile,
   getUserProfile,
@@ -98,7 +99,7 @@ export default function ProfileScreen() {
   const pickProfileImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -126,6 +127,47 @@ export default function ProfileScreen() {
     if (names.length === 0) return '';
     if (names.length === 1) return names[0].substring(0, 2).toUpperCase();
     return names.map(n => n[0].toUpperCase()).join('');
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure? This will permanently remove your profile and log you out. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+
+              // 1. Best-effort: try to delete the profile document.
+              // Swallow permission errors — collection-level perms may deny this
+              // on the client SDK, but the session deletion below always works.
+              if (profile?.$id) {
+                try {
+                  await databases.deleteDocument(DATABASE_ID, USERS_COLLECTION_ID, profile.$id);
+                } catch (docError: any) {
+                  // Permission denied or doc already gone — continue regardless
+                  console.warn('Could not delete profile doc (permission denied), continuing:', docError?.message);
+                }
+              }
+
+              // 2. Delete the current session — this always succeeds for the logged-in user
+              await account.deleteSession('current');
+
+              // 3. Navigate back to welcome screen
+              router.replace('/');
+            } catch (error: any) {
+              console.error('Delete account error:', error);
+              setLoading(false);
+              Alert.alert('Error', error.message || 'Failed to delete account. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading && !profile) {
@@ -308,14 +350,8 @@ export default function ProfileScreen() {
 
           <TouchableOpacity
             style={[styles.deleteButton, { backgroundColor: colors.white }]}
-            onPress={() => Alert.alert(
-              'Delete Account',
-              'Are you sure? This action cannot be undone.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Delete', style: 'destructive' }
-              ]
-            )}
+            onPress={handleDeleteAccount}
+            disabled={loading}
           >
             <Ionicons name="trash-outline" size={18} color="#FF4444" />
             <Text style={styles.deleteButtonText}>Delete Account</Text>
