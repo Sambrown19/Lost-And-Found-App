@@ -16,7 +16,9 @@ import {
   Alert,
   Modal,
   Linking,
+  Dimensions,
 } from "react-native";
+import { VideoView, useVideoPlayer } from "expo-video";
 import * as ImagePicker from "expo-image-picker";
 import { account, DATABASE_ID, CONVERSATIONS_COLLECTION_ID, databases, storage, STORAGE_BUCKET_ID, USERS_COLLECTION_ID } from "../../config/appwrite";
 import { ID, Query } from "react-native-appwrite";
@@ -30,6 +32,21 @@ const getInitials = (name: string) => {
   if (!name) return "?";
   return name.split(" ").map((part) => part[0]).join("").toUpperCase().slice(0, 2);
 };
+
+// Sub-component for expo-video so the hook is always called unconditionally
+function VideoPlayerModal({ uri }: { uri: string }) {
+  const player = useVideoPlayer({ uri }, (p) => {
+    p.play();
+  });
+  return (
+    <VideoView
+      player={player}
+      style={{ width: "100%", height: "80%" }}
+      allowsFullscreen
+      allowsPictureInPicture
+    />
+  );
+}
 
 const formatLastSeen = (lastSeen: string | null) => {
   if (!lastSeen) return "Offline";
@@ -57,6 +74,8 @@ export default function ChatDetailScreen() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [viewImageUri, setViewImageUri] = useState<string | null>(null);
+  const [viewVideoUri, setViewVideoUri] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState("");
   const [otherUserId, setOtherUserId] = useState("");
   const [otherUserName, setOtherUserName] = useState("");
@@ -385,7 +404,7 @@ export default function ChatDetailScreen() {
 
     if (item.mediaType === "image") {
       return (
-        <TouchableOpacity onPress={() => Alert.alert("Image", item.mediaUrl)}>
+        <TouchableOpacity onPress={() => setViewImageUri(item.mediaUrl)}>
           <Image
             source={{ uri: item.mediaUrl }}
             style={styles.mediaImage}
@@ -399,7 +418,7 @@ export default function ChatDetailScreen() {
       return (
         <TouchableOpacity
           style={[styles.fileContainer, { backgroundColor: isMyMessage ? "rgba(255,255,255,0.2)" : colors.gray }]}
-          onPress={() => Alert.alert("Video", "Video playback coming soon")}
+          onPress={() => setViewVideoUri(item.mediaUrl)}
         >
           <Ionicons name="play-circle" size={40} color={isMyMessage ? colors.white : colors.primary} />
           <Text style={[styles.fileName, { color: isMyMessage ? colors.white : colors.textPrimary }]}>
@@ -656,6 +675,28 @@ export default function ChatDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Image Viewer Modal */}
+      <Modal visible={!!viewImageUri} transparent={true} animationType="fade" onRequestClose={() => setViewImageUri(null)}>
+        <View style={styles.modalContainer}>
+          <TouchableOpacity style={styles.modalCloseButton} onPress={() => setViewImageUri(null)}>
+            <Ionicons name="close-circle" size={36} color="#FFFFFF" />
+          </TouchableOpacity>
+          {viewImageUri && (
+            <Image source={{ uri: viewImageUri }} style={styles.fullScreenMedia} resizeMode="contain" />
+          )}
+        </View>
+      </Modal>
+
+      {/* Video Player Modal */}
+      <Modal visible={!!viewVideoUri} transparent={true} animationType="fade" onRequestClose={() => setViewVideoUri(null)}>
+        <View style={styles.modalContainer}>
+          <TouchableOpacity style={styles.modalCloseButton} onPress={() => setViewVideoUri(null)}>
+            <Ionicons name="close-circle" size={36} color="#FFFFFF" />
+          </TouchableOpacity>
+          {viewVideoUri && <VideoPlayerModal uri={viewVideoUri} />}
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -671,7 +712,7 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   headerAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
   headerAvatarImage: { width: 40, height: 40, borderRadius: 20 },
-  headerAvatarText: { fontSize: 16, fontWeight: "700" },
+  headerAvatarText: { fontSize: 18, fontWeight: "600" },
   headerName: { fontSize: 16, fontWeight: "600" },
   headerStatus: { fontSize: 12 },
   moreButton: { width: 40, height: 40, justifyContent: "center", alignItems: "center" },
@@ -753,4 +794,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14, borderRadius: 12, alignItems: "center",
   },
   cancelButtonText: { fontSize: 15, fontWeight: "600" },
+  modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
+  modalCloseButton: { position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 10 },
+  fullScreenMedia: { width: '100%', height: '80%' },
 });

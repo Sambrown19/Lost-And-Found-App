@@ -72,7 +72,8 @@
           "cameraPermission": "The app needs access to your camera to take photos.",
           "microphonePermission": "The app needs access to your microphone for recording videos."
         }
-      ]
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,
