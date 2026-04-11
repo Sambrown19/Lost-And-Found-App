@@ -56,18 +56,30 @@ export default function LoginScreen() {
 
       await account.createEmailPasswordSession(email.toLowerCase(), password);
 
-      /*
       const user = await account.get();
 
+      // If email is not verified, send them to the verification waiting screen
       if (!user.emailVerification) {
-        alert("Please verify your email!");
+        router.replace("/(auth)/email-verification");
         return;
       }
-      */
-     
+
+      // Check if the user has completed their profile
+      try {
+        const { getUserProfile } = await import("../../services/userService");
+        const profile = await getUserProfile();
+        if (!profile || !profile.fullName) {
+          router.replace("/(auth)/complete-profile");
+          return;
+        }
+      } catch (_) {
+        router.replace("/(auth)/complete-profile");
+        return;
+      }
+
       console.log("Login successful");
 
-      // Use replace with a slight delay to ensure proper navigation
+      // Fully verified and profile complete
       setTimeout(() => {
         router.replace("/(tabs)/home");
       }, 100);

@@ -98,6 +98,9 @@ export default function CompleteProfileScreen() {
         profileImageUrl = await uploadProfileImage(imageUri);
       }
       
+      // Add this line to overwrite the Appwrite Auth email-prefix with their REAL name!
+      await account.updateName(fullName);
+
       // Save profile to database
       await createUserProfile({
         email: user.email,

@@ -4,13 +4,13 @@ import { useTheme } from "@/context/ThemeContext";
 import { getUserConversations } from "@/services/messagesService";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState, useRef } from "react";
 import {
-  Alert,
   FlatList,
   Image,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -57,18 +57,26 @@ export default function ConversationsScreen() {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState("");
-  const [userImages, setUserImages] = useState<Record<string, string>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  // Fix: Use a ref for the image cache so the interval closure doesn't get a strict, empty copy!
+  const userImagesRef = useRef<Record<string, string>>({});
+  const userOnlineRef = useRef<Record<string, boolean>>({}); // cache online status
+  const [imagesVersion, setImagesVersion] = useState(0); // Dummy state to trigger UI re-renders 
 
   const fetchUserProfileImage = async (userId: string) => {
-    if (userImages[userId]) return userImages[userId];
+    if (userImagesRef.current[userId] !== undefined) return userImagesRef.current[userId];
     try {
       const response = await databases.listDocuments(
         DATABASE_ID,
         USERS_COLLECTION_ID,
         [Query.equal("userId", userId)]
       );
-      const imageUrl = response.documents[0]?.profileImage || "";
-      setUserImages(prev => ({ ...prev, [userId]: imageUrl }));
+      const doc = response.documents[0];
+      const imageUrl = doc?.profileImage || "";
+      const isOnline = doc?.isOnline || false;
+      userImagesRef.current[userId] = imageUrl;
+      userOnlineRef.current[userId] = isOnline;
+      setImagesVersion(v => v + 1); // trigger re-render
       return imageUrl;
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -96,7 +104,6 @@ export default function ConversationsScreen() {
       }
     } catch (error) {
       console.error("Load conversations error:", error);
-      if (showLoading) Alert.alert("Error", "Failed to load conversations");
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -130,20 +137,31 @@ export default function ConversationsScreen() {
     return { otherUserId, otherUserName };
   };
 
+  const filteredConversations = searchQuery.trim()
+    ? conversations.filter((conv) => {
+        const { otherUserName } = getOtherParticipant(conv);
+        return (
+          otherUserName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (conv.itemTitle || "").toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      })
+    : conversations;
+
   const renderConversation = ({ item }: { item: any }) => {
     const { otherUserId, otherUserName } = getOtherParticipant(item);
     const hasUnread = item.unreadCount > 0 && item.unreadFor === currentUserId;
     const avatarColor = getRandomColor(otherUserId || otherUserName);
-    const profileImage = userImages[otherUserId];
+    const profileImage = userImagesRef.current[otherUserId] || "";
+    const isOtherOnline = userOnlineRef.current[otherUserId] || false;
 
     return (
       <TouchableOpacity
         style={[
-          styles.conversationItem,
-          { borderBottomColor: colors.border },
-          hasUnread && { backgroundColor: colors.gray },
+          styles.conversationCard,
+          { backgroundColor: colors.white, shadowColor: colors.black },
+          hasUnread && styles.conversationCardUnread,
         ]}
-        activeOpacity={0.7}
+        activeOpacity={0.75}
         onPress={() => router.push({
           pathname: "/chat/[id]",
           params: {
@@ -156,6 +174,7 @@ export default function ConversationsScreen() {
           },
         })}
       >
+        {/* Avatar */}
         <View style={styles.avatarContainer}>
           {profileImage ? (
             <Image source={{ uri: profileImage }} style={styles.avatarImage} />
@@ -164,18 +183,19 @@ export default function ConversationsScreen() {
               <Text style={styles.avatarText}>{getInitials(otherUserName)}</Text>
             </View>
           )}
-          {hasUnread && (
-            <View style={[styles.unreadDot, { borderColor: colors.white }]} />
+          {isOtherOnline && (
+            <View style={[styles.onlineDot, { borderColor: colors.white }]} />
           )}
         </View>
 
+        {/* Content */}
         <View style={styles.conversationInfo}>
           <View style={styles.conversationHeader}>
             <Text
               style={[
                 styles.userName,
                 { color: colors.textPrimary },
-                hasUnread && { fontWeight: "700" },
+                hasUnread && { fontWeight: "800" },
               ]}
               numberOfLines={1}
             >
@@ -187,38 +207,41 @@ export default function ConversationsScreen() {
           </View>
 
           {item.itemTitle && (
-            <View style={styles.itemTitleContainer}>
-              <Ionicons name="cube-outline" size={12} color={colors.primary} />
-              <Text style={[styles.itemTitle, { color: colors.primary }]} numberOfLines={1}>
+            <View style={[styles.itemPill, { backgroundColor: colors.gray }]}>
+              <Ionicons name="pricetag-outline" size={11} color={colors.primary} />
+              <Text style={[styles.itemPillText, { color: colors.primary }]} numberOfLines={1}>
                 {item.itemTitle}
               </Text>
             </View>
           )}
 
-          <View style={styles.lastMessageContainer}>
-            {!item.lastMessage && (
-              <Ionicons name="chatbubble-outline" size={12} color={colors.textLight} />
-            )}
-            <Text
-              style={[
-                styles.lastMessage,
-                { color: colors.textSecondary },
-                hasUnread && { color: colors.textPrimary, fontWeight: "500" },
-              ]}
-              numberOfLines={1}
-            >
-              {item.lastMessage || "Tap to start conversation"}
-            </Text>
-          </View>
+          <Text
+            style={[
+              styles.lastMessage,
+              { color: hasUnread ? colors.textPrimary : colors.textSecondary },
+              hasUnread && { fontWeight: "600" },
+            ]}
+            numberOfLines={1}
+          >
+            {item.lastMessage || "Tap to start conversation"}
+          </Text>
         </View>
 
-        {hasUnread && (
-          <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
-            <Text style={styles.unreadBadgeText}>
-              {item.unreadCount > 99 ? "99+" : item.unreadCount}
-            </Text>
-          </View>
-        )}
+        {/* Right side */}
+        <View style={styles.cardRight}>
+          {hasUnread ? (
+            <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
+              <Text style={styles.unreadBadgeText}>
+                {item.unreadCount > 99 ? "99+" : item.unreadCount}
+              </Text>
+            </View>
+          ) : (
+            <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+          )}
+          {item.itemImage ? (
+            <Image source={{ uri: item.itemImage }} style={[styles.itemThumb, { borderColor: colors.border }]} />
+          ) : null}
+        </View>
       </TouchableOpacity>
     );
   };
@@ -247,15 +270,37 @@ export default function ConversationsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.white, borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Messages</Text>
-        <TouchableOpacity style={styles.headerButton} onPress={() => Alert.alert('Search', 'Conversation search coming soon!')}>
-          <Ionicons name="search-outline" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
+        <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+          {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
+        </Text>
+      </View>
+
+      {/* Search Bar */}
+      <View style={[styles.searchWrapper, { backgroundColor: colors.white, borderBottomColor: colors.border }]}>
+        <View style={[styles.searchBar, { backgroundColor: colors.gray, borderColor: colors.border }]}>
+          <Ionicons name="search-outline" size={18} color={colors.textLight} style={styles.searchIcon} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.textPrimary }]}
+            placeholder="Search by name or item..."
+            placeholderTextColor={colors.textLight}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close-circle" size={18} color={colors.textLight} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <FlatList
-        data={conversations}
+        data={filteredConversations}
         renderItem={renderConversation}
         keyExtractor={(item) => item.$id}
         contentContainerStyle={styles.listContent}
@@ -271,64 +316,104 @@ export default function ConversationsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
+  // Header
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     paddingTop: 60,
     paddingHorizontal: 20,
-    paddingBottom: 15,
+    paddingBottom: 12,
+    borderBottomWidth: 0,
+  },
+  headerTitle: { fontSize: 30, fontWeight: "800", letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 13, marginTop: 2 },
+
+  // Search
+  searchWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderBottomWidth: 1,
   },
-  headerTitle: { fontSize: 28, fontWeight: "700" },
-  headerButton: {
-    width: 40, height: 40, borderRadius: 20,
-    justifyContent: "center", alignItems: "center",
-  },
-  listContent: { flexGrow: 1, paddingHorizontal: 20 },
-  conversationItem: {
+  searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 16,
-    borderBottomWidth: 1,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
+  searchIcon: { marginRight: 8 },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    paddingVertical: 0,
+  },
+
+  // List
+  listContent: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, gap: 10 },
+
+  // Conversation Card
+  conversationCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  conversationCardUnread: {
+    shadowOpacity: 0.12,
+    elevation: 5,
+  },
+
+  // Avatar
   avatarContainer: { position: "relative", marginRight: 14 },
   avatar: {
-    width: 56, height: 56, borderRadius: 28,
+    width: 54, height: 54, borderRadius: 27,
     justifyContent: "center", alignItems: "center",
   },
-  avatarImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  avatarImage: { width: 54, height: 54, borderRadius: 27 },
+  avatarText: { fontSize: 19, fontWeight: "700", color: "#FFFFFF" },
+  onlineDot: {
+    position: "absolute", bottom: 1, right: 1,
+    width: 13, height: 13, borderRadius: 7,
+    backgroundColor: "#22C55E", borderWidth: 2,
   },
-  avatarText: { fontSize: 20, fontWeight: "600", color: "#FFFFFF" },
-  unreadDot: {
-    position: "absolute", top: 2, right: 2,
-    width: 12, height: 12, borderRadius: 6,
-    backgroundColor: "#4CAF50", borderWidth: 2,
-  },
-  conversationInfo: { flex: 1 },
+
+  // Content
+  conversationInfo: { flex: 1, minWidth: 0 },
   conversationHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "baseline",
-    marginBottom: 6,
+    alignItems: "center",
+    marginBottom: 4,
   },
-  userName: { fontSize: 16, fontWeight: "600", flex: 1, marginRight: 8 },
-  timeText: { fontSize: 11 },
-  itemTitleContainer: {
-    flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4,
+  userName: { fontSize: 15, fontWeight: "700", flex: 1, marginRight: 6 },
+  timeText: { fontSize: 11, fontWeight: "500" },
+  itemPill: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    alignSelf: "flex-start",
+    borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3,
+    marginBottom: 5,
   },
-  itemTitle: { fontSize: 12, fontWeight: "500", flex: 1 },
-  lastMessageContainer: { flexDirection: "row", alignItems: "center", gap: 4 },
-  lastMessage: { fontSize: 13, flex: 1 },
+  itemPillText: { fontSize: 11, fontWeight: "600", maxWidth: 160 },
+  lastMessage: { fontSize: 13 },
+
+  // Right side
+  cardRight: { alignItems: "center", gap: 8, marginLeft: 8 },
   unreadBadge: {
-    minWidth: 24, height: 24, borderRadius: 12,
+    minWidth: 22, height: 22, borderRadius: 11,
     justifyContent: "center", alignItems: "center",
-    marginLeft: 8, paddingHorizontal: 7,
+    paddingHorizontal: 6,
   },
-  unreadBadgeText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
+  unreadBadgeText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
+  itemThumb: {
+    width: 36, height: 36, borderRadius: 8, borderWidth: 1,
+  },
+
+  // Empty state
   emptyState: {
     flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80,
   },

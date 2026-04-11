@@ -25,16 +25,32 @@ export default function WelcomeScreen() {
 
   const checkSession = async () => {
     try {
-      // Check if user is already logged in
       const user = await account.get();
-      // if (!user.emailVerification) {
-      //   router.replace("/(auth)/email-verification");
-      //   return;
-      // }
-      // User is logged in, redirect to home
+
+      // If email is not verified, send them back to the verification waiting screen
+      if (!user.emailVerification) {
+        router.replace("/(auth)/email-verification");
+        return;
+      }
+
+      // Check if the user has completed their profile
+      try {
+        const { getUserProfile } = await import("../services/userService");
+        const profile = await getUserProfile();
+        if (!profile || !profile.fullName) {
+          router.replace("/(auth)/complete-profile");
+          return;
+        }
+      } catch (_) {
+        // No profile yet — send to complete profile
+        router.replace("/(auth)/complete-profile");
+        return;
+      }
+
+      // Fully verified + profile complete → go to home
       router.replace("/(tabs)/home");
     } catch (error) {
-      // No active session, show splash screen
+      // No active session — show splash screen
       setChecking(false);
     }
   };

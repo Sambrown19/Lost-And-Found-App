@@ -13,7 +13,6 @@ import {
 // Configure how notifications appear when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: true,
@@ -77,7 +76,9 @@ export const registerForPushNotifications = async () => {
 
     if (!token) return null;
 
-    console.log("Push token:", token);
+    console.log("=========================================");
+    console.log("ANDROID TEST TOKEN: ", token);
+    console.log("=========================================");
     await savePushToken(token);
     return token;
   } catch (error) {
@@ -104,8 +105,12 @@ export const savePushToken = async (token: string) => {
       );
       console.log("Push token saved successfully");
     }
-  } catch (error) {
-    console.error("Save push token error:", error);
+  } catch (error: any) {
+    if (error?.message?.includes("missing scopes") || error?.code === 401) {
+      console.log("Skipping push token saving: User not logged in (guest).");
+    } else {
+      console.error("Save push token error:", error);
+    }
   }
 };
 
@@ -155,5 +160,46 @@ export const sendPushNotification = async (
     console.log("Push notification sent:", data);
   } catch (error) {
     console.error("Send push notification error:", error);
+  }
+};
+
+export const sendItemMatchNotification = async (
+  receiverUserId: string,
+  title: string,
+  body: string,
+  itemId: string,
+) => {
+  try {
+    const response = await databases.listDocuments(
+      DATABASE_ID,
+      USERS_COLLECTION_ID,
+      [Query.equal("userId", receiverUserId)],
+    );
+
+    if (response.documents.length === 0) return;
+
+    const pushToken = response.documents[0].pushToken;
+    if (!pushToken) return;
+
+    await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip, deflate",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: pushToken,
+        title: title,
+        body: body,
+        data: { url: `/item/${itemId}` }, // Direct deep link matching Expo Router
+        sound: "default",
+        badge: 1,
+        channelId: "default",
+        priority: "high",
+      }),
+    });
+  } catch (error) {
+    console.error("Send match notification error:", error);
   }
 };

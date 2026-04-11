@@ -19,6 +19,7 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  RefreshControl,
 } from "react-native";
 import { getInitials, getUserProfile } from "../../services/userService";
 import { getUserConversations } from "../../services/messagesService";
@@ -43,6 +44,7 @@ export default function HomeScreen() {
   const [showHistory, setShowHistory] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   const searchInputRef = useRef<TextInput>(null);
@@ -76,8 +78,8 @@ export default function HomeScreen() {
     }
   };
 
-  const loadItems = async () => {
-    setLoadingItems(true);
+  const loadItems = async (showLoading = true) => {
+    if (showLoading) setLoadingItems(true);
     try {
       let data: Item[] = [];
       if (activeTab === "recent") {
@@ -94,9 +96,15 @@ export default function HomeScreen() {
     } catch (error) {
       console.error("Error loading items:", error);
     } finally {
-      setLoadingItems(false);
+      if (showLoading) setLoadingItems(false);
       setInitialLoading(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await loadItems(false);
+    setIsRefreshing(false);
   };
 
   const performSearch = (query: string, itemsToSearch: Item[]) => {
@@ -201,10 +209,18 @@ export default function HomeScreen() {
         }
       };
       
-      if (userProfile) {
-        checkUnread();
-      }
-    }, [userProfile])
+      const refreshData = async () => {
+        // Only run background refreshes if we're not inside the very first initial loading state
+        if (!initialLoading) {
+           await loadUserProfile();
+           checkUnread();
+           loadItems(false);
+        }
+      };
+
+      refreshData();
+      
+    }, [initialLoading, activeTab])
   );
 
   // Subsequent tab changes only reload items (not the initial full load)
@@ -407,7 +423,18 @@ export default function HomeScreen() {
       </View>
 
       {/* Items List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
         {loadingItems ? (
           <>
             <ItemCardSkeleton />

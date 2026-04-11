@@ -75,7 +75,6 @@ export default function SignUpScreen() {
         await account.deleteSession("current");
         console.log("Existing session deleted");
       } catch (error) {
-        // No active session, continue
         console.log("No existing session");
       }
 
@@ -87,13 +86,29 @@ export default function SignUpScreen() {
       );
       console.log("User created:", user);
 
-      // Create session first so the user is authenticated
+      // Create session so we can send the verification email
       await account.createEmailPasswordSession(email.toLowerCase(), password);
       console.log("Session created");
 
-      router.replace("/(auth)/complete-profile");
+      try {
+        await account.createVerification("https://myapp.local/email-verified");
+        console.log("Verification email sent");
+      } catch (verifyError: any) {
+        if (!verifyError?.message?.includes("Invalid `url` param")) {
+          console.error("Verification email failed, deleting session:", verifyError);
+          try { await account.deleteSession("current"); } catch (_) {}
+          Alert.alert("Verification Failed", verifyError.message || "We couldn't send a verification email.");
+          return;
+        }
+      }
+
+      // Only reach here if everything succeeded
+      router.replace("/(auth)/email-verification");
     } catch (error: any) {
       console.error("Sign up error:", error);
+
+      // Clean up any partial session if one was created
+      try { await account.deleteSession("current"); } catch (_) {}
 
       if (error.code === 409) {
         Alert.alert(

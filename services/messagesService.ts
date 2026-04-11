@@ -21,6 +21,8 @@ export interface Message {
   itemTitle?: string;
   read: boolean;
   createdAt: string;
+  isEdited?: boolean;
+  isDeleted?: boolean;
 }
 
 export interface Conversation {
@@ -48,6 +50,11 @@ export const sendMessage = async (
 ) => {
   try {
     const user = await account.get();
+    
+    // Fetch real full name from database instead of email prefix
+    const userProfile = await databases.listDocuments(DATABASE_ID, USERS_COLLECTION_ID, [
+      Query.equal("userId", user.$id)
+    ]);
 
     const message = await databases.createDocument(
       DATABASE_ID,
@@ -56,7 +63,7 @@ export const sendMessage = async (
       {
         conversationId,
         senderId: user.$id,
-        senderName: user.name,
+        senderName: userProfile && userProfile.documents.length > 0 ? userProfile.documents[0].fullName || user.name : user.name,
         receiverId,
         receiverName,
         message: messageText,
@@ -93,7 +100,7 @@ export const sendMessage = async (
 
     await sendPushNotification(
       receiverId,
-      user.name,
+      userProfile && userProfile.documents.length > 0 ? userProfile.documents[0].fullName || user.name : user.name,
       messageText,
       conversationId,
     );
@@ -274,5 +281,88 @@ export const markMessagesAsRead = async (conversationId: string) => {
     }
   } catch (error) {
     console.error("Mark as read error:", error);
+  }
+};
+
+export const deleteMessage = async (messageId: string, conversationId?: string) => {
+  try {
+    const deletedText = "This message was deleted";
+    await databases.updateDocument(
+      DATABASE_ID,
+      MESSAGES_COLLECTION_ID,
+      messageId,
+      {
+        message: deletedText,
+        isDeleted: true,
+        mediaUrl: "",
+        mediaType: "",
+      },
+    );
+
+    // Keep the conversation preview in sync if this was the last message
+    if (conversationId) {
+      try {
+        const latestMessages = await databases.listDocuments(
+          DATABASE_ID,
+          MESSAGES_COLLECTION_ID,
+          [
+            Query.equal("conversationId", conversationId),
+            Query.orderDesc("createdAt"),
+            Query.limit(1)
+          ]
+        );
+        
+        if (latestMessages.documents.length > 0 && latestMessages.documents[0].$id === messageId) {
+          await databases.updateDocument(DATABASE_ID, CONVERSATIONS_COLLECTION_ID, conversationId, {
+            lastMessage: deletedText,
+          });
+        }
+      } catch {
+        // Non-critical — don't throw
+      }
+    }
+  } catch (error) {
+    console.error("Delete message error:", error);
+    throw error;
+  }
+};
+
+export const editMessage = async (messageId: string, newText: string, conversationId?: string) => {
+  try {
+    await databases.updateDocument(
+      DATABASE_ID,
+      MESSAGES_COLLECTION_ID,
+      messageId,
+      {
+        message: newText,
+        isEdited: true,
+      },
+    );
+
+    // Keep the conversation preview in sync if this was the last message
+    if (conversationId) {
+      try {
+        const latestMessages = await databases.listDocuments(
+          DATABASE_ID,
+          MESSAGES_COLLECTION_ID,
+          [
+            Query.equal("conversationId", conversationId),
+            Query.orderDesc("createdAt"),
+            Query.limit(1)
+          ]
+        );
+        
+        if (latestMessages.documents.length > 0 && latestMessages.documents[0].$id === messageId) {
+          await databases.updateDocument(DATABASE_ID, CONVERSATIONS_COLLECTION_ID, conversationId, {
+            lastMessage: newText,
+          });
+        }
+      } catch {
+        // Non-critical — don't throw
+      }
+    }
+  } catch (error) {
+    console.error("Edit message error:", error);
+    throw error;
   }
 };

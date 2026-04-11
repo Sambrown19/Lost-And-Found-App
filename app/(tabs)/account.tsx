@@ -1,6 +1,6 @@
 import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -31,10 +31,12 @@ export default function AccountScreen() {
     returned: 0,
   });
 
-  useEffect(() => {
-    loadUserProfile();
-    loadUserStats();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadUserProfile();
+      loadUserStats();
+    }, [])
+  );
 
   const loadUserProfile = async () => {
     try {

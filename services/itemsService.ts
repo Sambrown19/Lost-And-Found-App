@@ -1,4 +1,5 @@
 import { ID, Query } from "react-native-appwrite";
+import { sendItemMatchNotification } from "./notificationsService";
 import {
   account,
   DATABASE_ID,
@@ -58,6 +59,53 @@ export const createItem = async (
       createdAt: new Date().toISOString(),
     },
   );
+
+  // ------- POTENTIAL MATCH NOTIFICATION LOGIC -------
+  try {
+    if (data.type === "found") {
+      // Find active lost items in the same category
+      const lostItems = await databases.listDocuments(DATABASE_ID, ITEMS_COLLECTION_ID, [
+        Query.equal("type", "lost"),
+        Query.equal("category", data.category),
+        Query.equal("status", "active"),
+      ]);
+
+      const notifiedUsers = new Set<string>();
+      for (const lostItem of lostItems.documents) {
+        if (lostItem.userId !== user.$id && !notifiedUsers.has(lostItem.userId)) {
+          notifiedUsers.add(lostItem.userId);
+          await sendItemMatchNotification(
+            lostItem.userId,
+            "Potential Match!",
+            `Someone just found an item matching your lost ${data.category}. Tap to view it.`,
+            item.$id // Direct them to the new found item
+          );
+        }
+      }
+    } else if (data.type === "lost") {
+      // Find active found items in the same category
+      const foundItems = await databases.listDocuments(DATABASE_ID, ITEMS_COLLECTION_ID, [
+        Query.equal("type", "found"),
+        Query.equal("category", data.category),
+        Query.equal("status", "active"),
+      ]);
+
+      // Filter out items found by the user themselves
+      const otherFoundItems = foundItems.documents.filter(doc => doc.userId !== user.$id);
+
+      if (otherFoundItems.length > 0) {
+        const latestFound = otherFoundItems[0];
+        await sendItemMatchNotification(
+          user.$id, // Notify the user who just created the lost item
+          "Potential Match Found!",
+          `We already have a found item matching your ${data.category}. Tap to check if it's yours.`,
+          latestFound.$id // Direct them to the existing found item
+        );
+      }
+    }
+  } catch (err) {
+    console.error("Match notification logic failed:", err);
+  }
 
   return item;
 };
@@ -144,8 +192,8 @@ export const uploadImage = async (imageUri: string) => {
     const user = await account.get();
     console.log("Uploading for user:", user.$id);
     
-    // Get file info
-    const fileName = imageUri.split('/').pop() || `image_${Date.now()}.jpg`;
+    // Hardcode a clean filename since device URIs often have unpredictable or missing extensions
+    const fileName = `upload_${Date.now()}.jpg`;
     const fileType = 'image/jpeg';
     
     // Create file object in the format Appwrite expects
