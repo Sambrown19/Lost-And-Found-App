@@ -52,7 +52,7 @@ app-example
 # generated native folders
 /ios
 /android
-=======
+
 # Logs
 logs
 *.log
@@ -192,4 +192,7 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
->>>>>>> 41889789fdf74114063ac86b82fa5870493fbeb1
+
+# Firebase Credentials
+google-services.json
+GoogleService-Info.plist
