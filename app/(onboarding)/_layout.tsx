@@ -10,7 +10,6 @@ export default function OnboardingLayout() {
         gestureEnabled: false, // This prevents swipe back on onboarding screens
       }}
     >
-      <Stack.Screen name="index" />
       <Stack.Screen name="onboarding" />
     </Stack>
   );

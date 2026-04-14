@@ -14,7 +14,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { account } from "@/config/appwrite";
+import { account, databases, DATABASE_ID, NOTIFICATIONS_COLLECTION_ID } from "@/config/appwrite";
+import { Query } from "react-native-appwrite";
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -29,31 +30,69 @@ export default function NotificationsScreen() {
       else setLoading(true);
 
       const user = await account.get();
-      const conversations = await getUserConversations();
       
-      // Filter conversations to only those with unread messages for this user
-      const unreadConversations = conversations.filter(
-        (conv) => conv.unreadCount > 0 && conv.unreadFor === user.$id
-      );
+      // Fetch both Conversations and DB Notifications in parallel
+      const [conversations, dbNotifications] = await Promise.all([
+        getUserConversations(),
+        databases.listDocuments(DATABASE_ID, NOTIFICATIONS_COLLECTION_ID, [
+          Query.equal("userId", user.$id),
+          Query.orderDesc("$createdAt"),
+          Query.limit(50)
+        ])
+      ]);
+      
+      const mappedNotifications: any[] = [];
 
-      // Map to a notification format
-      const mappedNotifications = unreadConversations.map(conv => {
-        // Find the sender name from participantNames
+      // Map conversations
+      conversations.forEach(conv => {
+        const isNew = conv.unreadCount > 0 && conv.unreadFor === user.$id;
         const names = conv.participantNames?.split(",") || ["User", "User"];
         const senderName = names[0] === user.name ? names[1] : names[0] || "Someone";
         
-        return {
+        mappedNotifications.push({
           id: conv.$id,
+          dbId: null, // Conversations manage unread state internally 
           type: "message",
-          title: `New message from ${senderName}`,
+          title: `Message from ${senderName}`,
           message: conv.lastMessage || "Sent you a message",
           time: conv.lastMessageTime,
           conversationId: conv.$id,
           itemTitle: conv.itemTitle,
-        };
+          isNew: isNew,
+        });
       });
 
-      // Sort by time descending
+      // Map Real DB Notifications
+      const unreadDbIds: string[] = [];
+      dbNotifications.documents.forEach(doc => {
+        if (!doc.isRead) unreadDbIds.push(doc.$id);
+
+        let parsedData = null;
+        try { if (doc.data) parsedData = JSON.parse(doc.data); } catch (e) {}
+
+        mappedNotifications.push({
+          id: doc.$id,
+          dbId: doc.$id,
+          type: doc.type || "system",
+          title: doc.title || "Notification",
+          message: doc.body || "",
+          time: doc.$createdAt,
+          conversationId: parsedData?.conversationId || null,
+          itemTitle: parsedData?.itemId ? "Item Match" : null,
+          isNew: !doc.isRead,
+        });
+      });
+
+      // Automatically mark DB notifications as read in the background since they've now been seen
+      if (unreadDbIds.length > 0) {
+        Promise.all(
+          unreadDbIds.map(docId =>
+            databases.updateDocument(DATABASE_ID, NOTIFICATIONS_COLLECTION_ID, docId, { isRead: true })
+          )
+        ).catch(err => console.log("Failed to clear notification statuses", err));
+      }
+
+      // Sort globally by time descending
       mappedNotifications.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
       
       setNotifications(mappedNotifications);
@@ -73,11 +112,18 @@ export default function NotificationsScreen() {
 
   const renderNotification = ({ item }: { item: any }) => (
     <TouchableOpacity 
-      style={[styles.notificationCard, { backgroundColor: colors.white, borderColor: colors.border }]}
-      onPress={() => router.push(`/chat/${item.conversationId}` as any)}
+      style={[
+        styles.notificationCard, 
+        { 
+          backgroundColor: item.isNew ? (isDark ? "rgba(255,255,255,0.05)" : "#F0F7FF") : colors.white, 
+          borderColor: item.isNew ? colors.primary : colors.border 
+        }
+      ]}
+      onPress={() => item.type === 'message' ? router.push(`/chat/${item.conversationId}` as any) : {}}
+      activeOpacity={item.type === 'message' ? 0.7 : 1}
     >
-      <View style={[styles.iconContainer, { backgroundColor: colors.primary }]}>
-        <Ionicons name="chatbubble-ellipses" size={24} color="#FFFFFF" />
+      <View style={[styles.iconContainer, { backgroundColor: item.type === 'system' ? '#4CAF50' : colors.primary }]}>
+        <Ionicons name={item.type === 'system' ? "megaphone" : "chatbubble-ellipses"} size={24} color="#FFFFFF" />
       </View>
       <View style={styles.notificationContent}>
         <Text style={[styles.notificationTitle, { color: colors.textPrimary }]}>{item.title}</Text>
@@ -88,10 +134,10 @@ export default function NotificationsScreen() {
           {item.message}
         </Text>
         <Text style={[styles.notificationTime, { color: colors.textLight }]}>
-          {new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {new Date(item.time).toLocaleDateString()} at {new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </Text>
       </View>
-      <View style={[styles.unreadDot, { backgroundColor: '#FF4444' }]} />
+      {item.isNew && <View style={[styles.unreadDot, { backgroundColor: '#FF4444' }]} />}
     </TouchableOpacity>
   );
 

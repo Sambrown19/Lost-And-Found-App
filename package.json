@@ -42,9 +42,7 @@
     "expo-system-ui": "~6.0.9",
     "expo-video": "~3.0.16",
     "expo-web-browser": "~15.0.10",
-    "install": "^0.13.0",
     "lodash.debounce": "^4.0.8",
-    "npm": "^11.6.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
@@ -59,10 +57,12 @@
   "devDependencies": {
     "@types/lodash.debounce": "^4.0.9",
     "@types/react": "~19.1.0",
-    "@types/react-native": "^0.72.8",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"
+  },
+  "overrides": {
+    "expo-file-system": "~19.0.21"
   },
   "private": true
 }

@@ -8,7 +8,9 @@ import {
   DATABASE_ID,
   databases,
   USERS_COLLECTION_ID,
+  NOTIFICATIONS_COLLECTION_ID,
 } from "../config/appwrite";
+import { ID } from "react-native-appwrite";
 
 // Configure how notifications appear when app is in foreground
 Notifications.setNotificationHandler({
@@ -114,6 +116,29 @@ export const savePushToken = async (token: string) => {
   }
 };
 
+export const removePushToken = async () => {
+  try {
+    const user = await account.get();
+    const response = await databases.listDocuments(
+      DATABASE_ID,
+      USERS_COLLECTION_ID,
+      [Query.equal("userId", user.$id)],
+    );
+
+    if (response.documents.length > 0) {
+      await databases.updateDocument(
+        DATABASE_ID,
+        USERS_COLLECTION_ID,
+        response.documents[0].$id,
+        { pushToken: null },
+      );
+      console.log("Push token removed successfully");
+    }
+  } catch (error) {
+    console.error("Remove push token error:", error);
+  }
+};
+
 export const sendPushNotification = async (
   receiverUserId: string,
   senderName: string,
@@ -199,7 +224,69 @@ export const sendItemMatchNotification = async (
         priority: "high",
       }),
     });
+
+    // Save notification to DB
+    await databases.createDocument(
+      DATABASE_ID,
+      NOTIFICATIONS_COLLECTION_ID,
+      ID.unique(),
+      {
+        userId: receiverUserId,
+        title: title,
+        body: body,
+        type: "match",
+        data: JSON.stringify({ itemId }),
+        isRead: false,
+      }
+    );
   } catch (error) {
     console.error("Send match notification error:", error);
+  }
+};
+
+export const sendLocalNotification = async (title: string, body: string) => {
+  try {
+    const Notifications = await import("expo-notifications");
+
+    // Must ensure permissions are granted before firing local notifications
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== "granted") {
+        console.log("Local notification blocked: no permissions.");
+        return;
+      }
+    }
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: "default",
+      },
+      trigger: null, // trigger immediately
+    });
+
+    // Save to database
+    try {
+      const user = await account.get();
+      await databases.createDocument(
+        DATABASE_ID,
+        NOTIFICATIONS_COLLECTION_ID,
+        ID.unique(),
+        {
+          userId: user.$id,
+          title: title,
+          body: body,
+          type: "system",
+          data: null,
+          isRead: false,
+        }
+      );
+    } catch (e) {
+      console.log("Could not save local notification to DB", e);
+    }
+  } catch (error) {
+    console.error("Local notification error", error);
   }
 };

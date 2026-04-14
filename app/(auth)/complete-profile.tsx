@@ -98,7 +98,6 @@ export default function CompleteProfileScreen() {
         profileImageUrl = await uploadProfileImage(imageUri);
       }
       
-      // Add this line to overwrite the Appwrite Auth email-prefix with their REAL name!
       await account.updateName(fullName);
 
       // Save profile to database
@@ -112,12 +111,35 @@ export default function CompleteProfileScreen() {
         isVerified: true,
       });
 
-      Alert.alert('Success', 'Profile created successfully!', [
-        {
-          text: 'OK',
-          onPress: () => router.replace('/(tabs)/home'),
-        },
-      ]);
+      try {
+        const { sendLocalNotification } = await import("../../services/notificationsService");
+        
+        // Initial welcome
+        await sendLocalNotification(
+          "Welcome to Lost & Found! 🎉", 
+          `Hi ${fullName.split(" ")[0]}, we are so glad you are here!`
+        );
+
+        // Guided tour step 1
+        setTimeout(() => {
+          sendLocalNotification(
+            "🔎 Looking for something?", 
+            "Tap 'Report Lost' on the Home screen to quickly report a missing item."
+          );
+        }, 5000);
+
+        // Guided tour step 2
+        setTimeout(() => {
+          sendLocalNotification(
+            "🤝 Help your campus", 
+            "Found an item? Tap 'Report Found' to notify everyone and be a hero!"
+          );
+        }, 12000);
+      } catch (err) {
+        console.error("Welcome notifications failed:", err);
+      }
+
+      router.replace('/(tabs)/home');
     } catch (error: any) {
       console.error('Complete profile error:', error);
       Alert.alert('Error', error.message || 'Failed to save profile. Please try again.');
@@ -414,7 +436,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stepCircleActive: {
-    // backgroundColor handled inline
   },
   stepNumber: {
     fontSize: 14,
@@ -484,7 +505,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   placeholder: {
-    // color handled inline
   },
   dropdownList: {
     position: 'absolute',

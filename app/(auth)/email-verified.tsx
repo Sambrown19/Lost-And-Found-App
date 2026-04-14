@@ -20,8 +20,7 @@ export default function EmailVerifiedScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const params = useLocalSearchParams();
-  const [verifying, setVerifying] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     // Animate checkmark in then fade in content
@@ -40,36 +39,9 @@ export default function EmailVerifiedScreen() {
     ]).start();
   }, []);
 
-  const hasFired = useRef(false);
-
   useEffect(() => {
-    if (hasFired.current) return;
-    
-    const { userId, secret } = params;
-    if (userId && secret) {
-      hasFired.current = true; // Lock it instantly
-      verifyEmail(userId as string, secret as string);
-    } else {
-      // Don't error out instantly if params aren't loaded yet on first tick
-      if (Object.keys(params).length > 0) {
-        setError("No valid verification link parameters found.");
-        setVerifying(false);
-      }
-    }
-  }, [params]);
-
-  const verifyEmail = async (userId: string, secret: string) => {
-    try {
-      setVerifying(true);
-      await account.updateVerification(userId, secret);
-      
-      setVerifying(false);
-    } catch (err: any) {
-      console.error("Verification error:", err);
-      setError(err.message || "Failed to verify email. The link may have expired or is invalid.");
-      setVerifying(false);
-    }
-  };
+    // Simply check session if needed, but since we arrive here after successful OTP, we just show success.
+  }, []);
 
   const handleContinue = () => {
     router.replace("/(auth)/complete-profile");
@@ -84,26 +56,7 @@ export default function EmailVerifiedScreen() {
     );
   }
 
-  if (error) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.iconContainer}>
-          <View style={[styles.iconCircle, { backgroundColor: "rgba(255, 82, 82, 0.1)" }]}>
-            <Ionicons name="alert-circle" size={80} color="#FF5252" />
-          </View>
-        </View>
-        
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Verification Failed</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{error}</Text>
-        </View>
-
-        <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={() => router.replace("/(auth)/login")}>
-          <Text style={[styles.buttonText, { color: colors.white }]}>Back to Login</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  // Error block removed since we are no longer verifying in this screen.
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

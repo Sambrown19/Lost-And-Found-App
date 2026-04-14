@@ -23,7 +23,8 @@ import {
 } from "react-native";
 import { getInitials, getUserProfile } from "../../services/userService";
 import { getUserConversations } from "../../services/messagesService";
-import { account } from "../../config/appwrite";
+import { account, databases, DATABASE_ID, NOTIFICATIONS_COLLECTION_ID } from "../../config/appwrite";
+import { Query } from "react-native-appwrite";
 
 interface SearchHistory {
   query: string;
@@ -202,8 +203,21 @@ export default function HomeScreen() {
         try {
           const user = await account.get();
           const userConvs = await getUserConversations();
-          const hasUnread = userConvs.some(conv => conv.unreadCount > 0 && conv.unreadFor === user.$id);
-          setHasUnreadNotifications(hasUnread);
+          const hasUnreadConv = userConvs.some(conv => conv.unreadCount > 0 && conv.unreadFor === user.$id);
+          
+          let hasUnreadDb = false;
+          try {
+            const dbNotifs = await databases.listDocuments(DATABASE_ID, NOTIFICATIONS_COLLECTION_ID, [
+              Query.equal("userId", user.$id),
+              Query.equal("isRead", false),
+              Query.limit(1)
+            ]);
+            hasUnreadDb = dbNotifs.documents.length > 0;
+          } catch (e) {
+            console.log("Could not check DB notifications");
+          }
+
+          setHasUnreadNotifications(hasUnreadConv || hasUnreadDb);
         } catch (error) {
           console.log("Could not load notifications status", error);
         }
@@ -281,13 +295,7 @@ export default function HomeScreen() {
         </View>
         <TouchableOpacity
           style={styles.notificationButton}
-          onPress={() => {
-            if (hasUnreadNotifications) {
-              router.push('/notifications');
-            } else {
-              Alert.alert('Notifications', 'No new notifications');
-            }
-          }}
+          onPress={() => router.push('/notifications')}
         >
           <Ionicons name="notifications-outline" size={24} color={colors.textPrimary} />
           {hasUnreadNotifications && <View style={styles.notificationBadge} />}

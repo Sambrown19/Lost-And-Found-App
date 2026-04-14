@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { account } from '../../config/appwrite';
 import { getInitials, getUserProfile } from '../../services/userService';
+import { removePushToken } from '../../services/notificationsService';
 import { getUserItems } from '../../services/itemsService';
 
 export default function AccountScreen() {
@@ -82,6 +83,7 @@ export default function AccountScreen() {
   const performLogout = async () => {
     setLoggingOut(true);
     try {
+      await removePushToken();
       await account.deleteSession('current');
       router.replace('/');
     } catch (error: any) {

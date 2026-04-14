@@ -31,6 +31,10 @@ export const MESSAGES_COLLECTION_ID =
   process.env.EXPO_PUBLIC_MESSAGES_COLLECTION_ID || "";
 export const CONVERSATIONS_COLLECTION_ID =
   process.env.EXPO_PUBLIC_CONVERSATIONS_COLLECTION_ID || "";
+export const NOTIFICATIONS_COLLECTION_ID = "notifications";
+
+export const FUNCTION_SEND_OTP = process.env.EXPO_PUBLIC_FUNCTION_SEND_OTP || "69dd19ef003d298ab7c9";
+export const FUNCTION_VERIFY_OTP = process.env.EXPO_PUBLIC_FUNCTION_VERIFY_OTP || "69dd1a1f00094ad4db52";
 
 // Log to verify they're loaded (remove in production)
 console.log("DATABASE_ID:", DATABASE_ID);

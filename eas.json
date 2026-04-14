@@ -9,7 +9,23 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_APPWRITE_ENDPOINT": "https://fra.cloud.appwrite.io/v1",
+        "EXPO_PUBLIC_APPWRITE_PROJECT_ID": "693bd5ee00189efc4418",
+        "EXPO_PUBLIC_DATABASE_ID": "693d2c51002d77e20696",
+        "EXPO_PUBLIC_USERS_COLLECTION_ID": "693d2e34003519df58ba",
+        "EXPO_PUBLIC_ITEMS_COLLECTION_ID": "69449f160011d8e8b279",
+        "EXPO_PUBLIC_STORAGE_BUCKET_ID": "693d337600151ba3df84",
+        "EXPO_PUBLIC_MESSAGES_COLLECTION_ID": "6973460d001bae2fbf47",
+        "EXPO_PUBLIC_CONVERSATIONS_COLLECTION_ID": "6973486900370779b839",
+        "EXPO_PUBLIC_OTP_COLLECTION_ID": "69dd14e8000ace2c7585",
+        "EXPO_PUBLIC_FUNCTION_SEND_OTP": "69dd19ef003d298ab7c9",
+        "EXPO_PUBLIC_FUNCTION_VERIFY_OTP": "69dd1a1f00094ad4db52"
+      }
     },
     "production": {
       "autoIncrement": true

@@ -79,6 +79,16 @@ export default function LoginScreen() {
 
       console.log("Login successful");
 
+      try {
+        const { sendLocalNotification } = await import("../../services/notificationsService");
+        const { getUserProfile } = await import("../../services/userService");
+        const profile = await getUserProfile();
+        const firstName = profile?.fullName?.split(" ")[0] || "";
+        await sendLocalNotification("Welcome Back! 👋", `It's great to see you again, ${firstName}.`);
+      } catch (err) {
+        // ignore
+      }
+
       // Fully verified and profile complete
       setTimeout(() => {
         router.replace("/(tabs)/home");

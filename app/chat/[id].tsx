@@ -35,17 +35,18 @@ const getInitials = (name: string) => {
   return name.split(" ").map((part) => part[0]).join("").toUpperCase().slice(0, 2);
 };
 
-// Sub-component for expo-video so the hook is always called unconditionally
 function VideoPlayerModal({ uri }: { uri: string }) {
-  const player = useVideoPlayer({ uri }, (p) => {
+  const player = useVideoPlayer(uri, (p) => {
     p.play();
   });
   return (
     <VideoView
       player={player}
-      style={{ width: "100%", height: "80%" }}
+      style={{ flex: 1, width: "100%", height: "100%" }}
       allowsFullscreen
       allowsPictureInPicture
+      nativeControls={true}
+      contentFit="contain"
     />
   );
 }

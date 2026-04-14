@@ -24,6 +24,10 @@ export default function TabLayout() {
           router.replace("/(auth)/complete-profile");
           return;
         }
+
+        // 3. Register push notifications for the newly verified/logged-in user
+        const { registerForPushNotifications } = await import("@/services/notificationsService");
+        await registerForPushNotifications();
       } catch {
         // No session at all — send to login
         router.replace("/(auth)/login");

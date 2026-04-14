@@ -90,19 +90,8 @@ export default function SignUpScreen() {
       await account.createEmailPasswordSession(email.toLowerCase(), password);
       console.log("Session created");
 
-      try {
-        await account.createVerification("https://myapp.local/email-verified");
-        console.log("Verification email sent");
-      } catch (verifyError: any) {
-        if (!verifyError?.message?.includes("Invalid `url` param")) {
-          console.error("Verification email failed, deleting session:", verifyError);
-          try { await account.deleteSession("current"); } catch (_) {}
-          Alert.alert("Verification Failed", verifyError.message || "We couldn't send a verification email.");
-          return;
-        }
-      }
-
-      // Only reach here if everything succeeded
+      // Verification is now handled automatically by our cloud function trigger!
+      // The user will be redirected to the OTP screen to enter their code.
       router.replace("/(auth)/email-verification");
     } catch (error: any) {
       console.error("Sign up error:", error);
