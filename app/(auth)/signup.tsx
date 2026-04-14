@@ -260,6 +260,15 @@ export default function SignUpScreen() {
               <Text style={[styles.buttonText, { color: colors.white }]}>Continue</Text>
             )}
           </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+              Already have an account?{" "}
+            </Text>
+            <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+              <Text style={[styles.footerLink, { color: colors.primary }]}>Log In</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </ScrollView>
@@ -353,5 +362,18 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 25,
+    paddingBottom: 20,
+  },
+  footerText: {
+    fontSize: 14,
+  },
+  footerLink: {
+    fontSize: 14,
+    fontWeight: "700",
   },
 });
