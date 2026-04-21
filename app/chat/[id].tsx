@@ -20,6 +20,9 @@ import {
 } from "react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import * as ImagePicker from "expo-image-picker";
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import { account, DATABASE_ID, CONVERSATIONS_COLLECTION_ID, databases, storage, STORAGE_BUCKET_ID, USERS_COLLECTION_ID } from "../../config/appwrite";
 import { ID, Query } from "react-native-appwrite";
 import {
@@ -43,13 +46,49 @@ function VideoPlayerModal({ uri }: { uri: string }) {
     <VideoView
       player={player}
       style={{ flex: 1, width: "100%", height: "100%" }}
-      allowsFullscreen
       allowsPictureInPicture
       nativeControls={true}
       contentFit="contain"
     />
   );
 }
+
+const VideoMessagePreview = ({ uri, isMyMessage, onPlay }: { uri: string, isMyMessage: boolean, onPlay: () => void }) => {
+  const { colors } = useTheme();
+  const [thumb, setThumb] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const generateThumb = async () => {
+      try {
+        const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(uri, { time: 500 });
+        if (isMounted) setThumb(thumbUri);
+      } catch (e) {
+        // Silent fallback to placeholder
+      }
+    };
+    generateThumb();
+    return () => { isMounted = false; };
+  }, [uri]);
+
+  return (
+    <TouchableOpacity
+      style={[styles.videoPreviewContainer, { backgroundColor: isMyMessage ? "rgba(255,255,255,0.2)" : colors.gray }]}
+      onPress={onPlay}
+    >
+      {thumb ? (
+        <Image source={{ uri: thumb }} style={styles.mediaImage} resizeMode="cover" />
+      ) : (
+        <View style={styles.videoPlaceholder}>
+           <ActivityIndicator color={isMyMessage ? colors.white : colors.primary} />
+        </View>
+      )}
+      <View style={styles.videoPlayOverlay}>
+        <Ionicons name="play-circle" size={50} color="rgba(255,255,255,0.8)" />
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 const formatLastSeen = (lastSeen: string | null) => {
   if (!lastSeen) return "Offline";
@@ -84,6 +123,9 @@ export default function ChatDetailScreen() {
   const [otherUserStatus, setOtherUserStatus] = useState("");
   const [showMediaOptions, setShowMediaOptions] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [savingMedia, setSavingMedia] = useState(false);
+  const [pendingMedia, setPendingMedia] = useState<Array<{ uri: string; fileName: string; mimeType: string; mediaType: "image" | "video" }>>([]);
+  const [showMediaPreview, setShowMediaPreview] = useState(false);
 
   // Edit / Delete state
   const [selectedMessage, setSelectedMessage] = useState<any | null>(null);
@@ -226,11 +268,20 @@ export default function ChatDetailScreen() {
     try {
       await closeModalAndWait();
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'], allowsEditing: false, quality: 0.8,
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        allowsEditing: false,
+        quality: 0.8,
       });
-      if (!result.canceled && result.assets?.[0]) {
-        const asset = result.assets[0];
-        await sendMediaMessage(asset.uri, asset.fileName || `img_${Date.now()}.jpg`, asset.mimeType || "image/jpeg", "image");
+      if (!result.canceled && result.assets?.length > 0) {
+        const assets = result.assets.map((asset) => ({
+          uri: asset.uri,
+          fileName: asset.fileName || `img_${Date.now()}.jpg`,
+          mimeType: asset.mimeType || "image/jpeg",
+          mediaType: "image" as const,
+        }));
+        setPendingMedia(assets);
+        setShowMediaPreview(true);
       }
     } catch (error: any) {
       Alert.alert("Error", "Failed to pick image: " + (error?.message || 'Unknown error'));
@@ -241,11 +292,20 @@ export default function ChatDetailScreen() {
     try {
       await closeModalAndWait();
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['videos'], allowsEditing: false, quality: 0.8,
+        mediaTypes: ['videos'],
+        allowsMultipleSelection: true,
+        allowsEditing: false,
+        quality: 0.8,
       });
-      if (!result.canceled && result.assets?.[0]) {
-        const asset = result.assets[0];
-        await sendMediaMessage(asset.uri, asset.fileName || `vid_${Date.now()}.mp4`, asset.mimeType || "video/mp4", "video");
+      if (!result.canceled && result.assets?.length > 0) {
+        const assets = result.assets.map((asset) => ({
+          uri: asset.uri,
+          fileName: asset.fileName || `vid_${Date.now()}.mp4`,
+          mimeType: asset.mimeType || "video/mp4",
+          mediaType: "video" as const,
+        }));
+        setPendingMedia(assets);
+        setShowMediaPreview(true);
       }
     } catch (error: any) {
       Alert.alert("Error", "Failed to pick video: " + (error?.message || 'Unknown error'));
@@ -266,10 +326,40 @@ export default function ChatDetailScreen() {
       const result = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.8 });
       if (!result.canceled && result.assets?.[0]) {
         const asset = result.assets[0];
-        await sendMediaMessage(asset.uri, asset.fileName || `photo_${Date.now()}.jpg`, asset.mimeType || "image/jpeg", "image");
+        setPendingMedia([{
+          uri: asset.uri,
+          fileName: asset.fileName || `photo_${Date.now()}.jpg`,
+          mimeType: asset.mimeType || "image/jpeg",
+          mediaType: "image",
+        }]);
+        setShowMediaPreview(true);
       }
     } catch (error: any) {
       Alert.alert("Error", "Failed to open camera: " + (error?.message || 'Unknown error'));
+    }
+  };
+
+  const handleConfirmSendMedia = async () => {
+    const mediaToSend = [...pendingMedia];
+    setPendingMedia([]);
+    setShowMediaPreview(false);
+    setUploadingMedia(true);
+    try {
+      for (const media of mediaToSend) {
+        const mediaUrl = await uploadMediaToAppwrite(media.uri, media.fileName, media.mimeType);
+        await sendMessage(
+          id as string, otherUserId, otherUserName,
+          media.mediaType === "image" ? "📷 Image" : "🎥 Video",
+          itemId as string, itemTitle as string, mediaUrl, media.mediaType,
+        );
+      }
+      await loadMessages(false);
+      isAtBottom.current = true;
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch (error: any) {
+      Alert.alert("Upload Failed", error?.message || "Failed to send media");
+    } finally {
+      setUploadingMedia(false);
     }
   };
 
@@ -288,6 +378,34 @@ export default function ChatDetailScreen() {
       Alert.alert("Upload Failed", error?.message || "Failed to send media");
     } finally {
       setUploadingMedia(false);
+    }
+  };
+
+  const handleSaveMedia = async (uri: string, mediaType: "image" | "video") => {
+    if (savingMedia) return;
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please grant permissions to save media to your gallery.');
+        return;
+      }
+      
+      setSavingMedia(true);
+      const isRemote = uri.startsWith('http');
+      let localUri = uri;
+      
+      if (isRemote) {
+        const fileExt = mediaType === "video" ? '.mp4' : '.jpg';
+        const downloaded = await FileSystem.downloadAsync(uri, FileSystem.documentDirectory + `saved_media_${Date.now()}${fileExt}`);
+        localUri = downloaded.uri;
+      }
+
+      await MediaLibrary.saveToLibraryAsync(localUri);
+      Alert.alert('Success', 'Media saved to gallery!');
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to save media.');
+    } finally {
+      setSavingMedia(false);
     }
   };
 
@@ -411,13 +529,11 @@ export default function ChatDetailScreen() {
     }
     if (item.mediaType === "video") {
       return (
-        <TouchableOpacity
-          style={[styles.fileContainer, { backgroundColor: isMyMessage ? "rgba(255,255,255,0.2)" : colors.gray }]}
-          onPress={() => setViewVideoUri(item.mediaUrl)}
-        >
-          <Ionicons name="play-circle" size={40} color={isMyMessage ? colors.white : colors.primary} />
-          <Text style={[styles.fileName, { color: isMyMessage ? colors.white : colors.textPrimary }]}>Video</Text>
-        </TouchableOpacity>
+        <VideoMessagePreview
+          uri={item.mediaUrl}
+          isMyMessage={isMyMessage}
+          onPlay={() => setViewVideoUri(item.mediaUrl)}
+        />
       );
     }
     return null;
@@ -807,12 +923,82 @@ export default function ChatDetailScreen() {
         </View>
       </Modal>
 
+      {/* ── Media Preview / Confirm Modal ── */}
+      <Modal
+        visible={showMediaPreview}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setShowMediaPreview(false); setPendingMedia([]); }}
+      >
+        <View style={styles.modalBackdropFull}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => { setShowMediaPreview(false); setPendingMedia([]); }}
+          />
+          <View style={[styles.previewSheet, { backgroundColor: colors.white }]}>
+            <View style={[styles.actionsDivider, { backgroundColor: colors.border }]} />
+            <Text style={[styles.previewTitle, { color: colors.textPrimary }]}>
+              {pendingMedia.length} {pendingMedia.length === 1 ? "item" : "items"} selected
+            </Text>
+
+            {/* Thumbnails row */}
+            <View style={styles.previewGrid}>
+              {pendingMedia.map((item, index) => (
+                <View key={index} style={styles.previewThumbWrap}>
+                  {item.mediaType === "image" ? (
+                    <Image source={{ uri: item.uri }} style={styles.previewThumb} resizeMode="cover" />
+                  ) : (
+                    <View style={[styles.previewThumb, styles.previewVideoThumb, { backgroundColor: colors.gray }]}>
+                      <Ionicons name="videocam" size={28} color={colors.primary} />
+                    </View>
+                  )}
+                  {/* Remove button */}
+                  <TouchableOpacity
+                    style={styles.previewRemoveBtn}
+                    onPress={() => {
+                      const updated = pendingMedia.filter((_, i) => i !== index);
+                      if (updated.length === 0) { setShowMediaPreview(false); setPendingMedia([]); }
+                      else setPendingMedia(updated);
+                    }}
+                  >
+                    <Ionicons name="close-circle" size={20} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+
+            {/* Actions */}
+            <View style={styles.previewActions}>
+              <TouchableOpacity
+                style={[styles.previewCancelBtn, { backgroundColor: colors.gray }]}
+                onPress={() => { setShowMediaPreview(false); setPendingMedia([]); }}
+              >
+                <Text style={[styles.previewCancelText, { color: colors.textPrimary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.previewSendBtn, { backgroundColor: colors.primary }]}
+                onPress={handleConfirmSendMedia}
+              >
+                <Ionicons name="send" size={16} color="#fff" />
+                <Text style={styles.previewSendText}>Send</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Image Viewer */}
       <Modal visible={!!viewImageUri} transparent animationType="fade" onRequestClose={() => setViewImageUri(null)}>
         <View style={styles.modalContainer}>
-          <TouchableOpacity style={styles.modalCloseButton} onPress={() => setViewImageUri(null)}>
-            <Ionicons name="close-circle" size={36} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={styles.modalHeaderActions}>
+            <TouchableOpacity style={styles.modalActionButton} onPress={() => viewImageUri && handleSaveMedia(viewImageUri, 'image')}>
+              {savingMedia ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons name="download" size={30} color="#FFFFFF" />}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalActionButton} onPress={() => setViewImageUri(null)}>
+              <Ionicons name="close-circle" size={36} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
           {viewImageUri && <Image source={{ uri: viewImageUri }} style={styles.fullScreenMedia} resizeMode="contain" />}
         </View>
       </Modal>
@@ -820,9 +1006,14 @@ export default function ChatDetailScreen() {
       {/* Video Player */}
       <Modal visible={!!viewVideoUri} transparent animationType="fade" onRequestClose={() => setViewVideoUri(null)}>
         <View style={styles.modalContainer}>
-          <TouchableOpacity style={styles.modalCloseButton} onPress={() => setViewVideoUri(null)}>
-            <Ionicons name="close-circle" size={36} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={styles.modalHeaderActions}>
+            <TouchableOpacity style={styles.modalActionButton} onPress={() => viewVideoUri && handleSaveMedia(viewVideoUri, 'video')}>
+              {savingMedia ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons name="download" size={30} color="#FFFFFF" />}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalActionButton} onPress={() => setViewVideoUri(null)}>
+              <Ionicons name="close-circle" size={36} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
           {viewVideoUri && <VideoPlayerModal uri={viewVideoUri} />}
         </View>
       </Modal>
@@ -883,6 +1074,17 @@ const styles = StyleSheet.create({
   senderName: { fontSize: 11, fontWeight: "600", marginBottom: 3 },
   messageText: { fontSize: 15, lineHeight: 21 },
   mediaImage: { width: 200, height: 200, borderRadius: 14 },
+  videoPreviewContainer: {
+    borderRadius: 14, overflow: 'hidden', position: 'relative',
+    minWidth: 200, minHeight: 200, justifyContent: 'center', alignItems: 'center'
+  },
+  videoPlaceholder: {
+    width: 200, height: 200, justifyContent: 'center', alignItems: 'center'
+  },
+  videoPlayOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)'
+  },
   fileContainer: {
     flexDirection: "row", alignItems: "center", gap: 8,
     padding: 10, borderRadius: 12, minWidth: 150,
@@ -979,8 +1181,29 @@ const styles = StyleSheet.create({
   cancelButton: { paddingVertical: 14, borderRadius: 14, alignItems: "center" },
   cancelButtonText: { fontSize: 15, fontWeight: "600" },
 
+  // Media preview confirm sheet
+  previewSheet: {
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 20, paddingBottom: 40, paddingTop: 12,
+  },
+  previewTitle: { fontSize: 16, fontWeight: "700", textAlign: "center", marginBottom: 20 },
+  previewGrid: {
+    flexDirection: "row", flexWrap: "wrap", gap: 10,
+    marginBottom: 24, justifyContent: "flex-start",
+  },
+  previewThumbWrap: { position: "relative" },
+  previewThumb: { width: 90, height: 90, borderRadius: 12 },
+  previewVideoThumb: { justifyContent: "center", alignItems: "center" },
+  previewRemoveBtn: { position: "absolute", top: -8, right: -8, zIndex: 10, backgroundColor: "#fff", borderRadius: 12 },
+  previewActions: { flexDirection: "row", gap: 12 },
+  previewCancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: "center" },
+  previewCancelText: { fontSize: 15, fontWeight: "600" },
+  previewSendBtn: { flex: 2, paddingVertical: 14, borderRadius: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 },
+  previewSendText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+
   // Full-screen viewers
   modalContainer: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center", alignItems: "center" },
-  modalCloseButton: { position: "absolute", top: 52, right: 20, zIndex: 10, padding: 10 },
+  modalHeaderActions: { position: "absolute", top: 52, right: 20, zIndex: 10, flexDirection: 'row', alignItems: 'center', gap: 16 },
+  modalActionButton: { padding: 4 },
   fullScreenMedia: { width: "100%", height: "80%" },
 });
