@@ -19,6 +19,7 @@ import {
   Dimensions,
 } from "react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
+import { Audio } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -90,6 +91,114 @@ const VideoMessagePreview = ({ uri, isMyMessage, onPlay }: { uri: string, isMyMe
   );
 };
 
+const AudioMessagePreview = ({ uri, isMyMessage }: { uri: string; isMyMessage: boolean }) => {
+  const { colors } = useTheme();
+  
+  // Extract initial duration from URI (if present)
+  const durationMatch = uri.match(/&duration=(\d+)/);
+  const initialDurationMillis = durationMatch ? parseInt(durationMatch[1], 10) * 1000 : 0;
+
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(initialDurationMillis);
+
+  useEffect(() => {
+    let isMounted = true;
+    const initAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
+        
+        let playUri = uri;
+        if (uri.startsWith("http")) {
+          const fileIdMatch = uri.match(/files\/([^\/]+)/);
+          const fileId = fileIdMatch ? fileIdMatch[1] : Math.random().toString(36).substring(7);
+          const localUri = `${FileSystem.cacheDirectory}audio_${fileId}.mp4`;
+          
+          const fileInfo = await FileSystem.getInfoAsync(localUri);
+          if (!fileInfo.exists) {
+            const result = await FileSystem.downloadAsync(uri, localUri);
+            playUri = result.uri;
+          } else {
+            playUri = localUri;
+          }
+        }
+
+        const { sound: newSound, status } = await Audio.Sound.createAsync(
+          { uri: playUri, overrideFileExtensionAndroid: 'mp4' },
+          { shouldPlay: false }
+        );
+        if (isMounted) {
+          setSound(newSound);
+          if (status.isLoaded) {
+            setDuration(status.durationMillis || 0);
+          }
+          newSound.setOnPlaybackStatusUpdate((newStatus) => {
+            if (newStatus.isLoaded) {
+              setPosition(newStatus.positionMillis);
+              setDuration(newStatus.durationMillis || 0);
+              setIsPlaying(newStatus.isPlaying);
+              if (newStatus.didJustFinish) {
+                setIsPlaying(false);
+                setPosition(0);
+              }
+            }
+          });
+        }
+      } catch (error) {
+        console.log("Error loading audio", error);
+      }
+    };
+    initAudio();
+
+    return () => {
+      isMounted = false;
+      if (sound) sound.unloadAsync();
+    };
+  }, [uri]);
+
+  const togglePlayback = async () => {
+    if (!sound) return;
+    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
+    if (isPlaying) {
+      await sound.pauseAsync();
+    } else {
+      if (position >= duration && duration > 0) {
+        await sound.replayAsync();
+      } else {
+        await sound.playAsync();
+      }
+    }
+  };
+
+  const formatAudioTime = (millis: number) => {
+    const totalSeconds = Math.floor(millis / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+  };
+
+  const progress = duration > 0 ? (position / duration) * 100 : 0;
+
+  return (
+    <View style={[styles.audioContainer, { backgroundColor: isMyMessage ? "rgba(255,255,255,0.2)" : colors.gray }]}>
+      <TouchableOpacity onPress={togglePlayback} style={styles.audioPlayButton} disabled={!sound}>
+        {!sound ? (
+          <ActivityIndicator size="small" color={isMyMessage ? colors.white : colors.primary} />
+        ) : (
+          <Ionicons name={isPlaying ? "pause" : "play"} size={20} color={isMyMessage ? colors.white : colors.primary} />
+        )}
+      </TouchableOpacity>
+      <View style={styles.audioTrack}>
+        <View style={[styles.audioProgress, { width: `${progress}%`, backgroundColor: isMyMessage ? colors.white : colors.primary }]} />
+      </View>
+      <Text style={[styles.audioTime, { color: isMyMessage ? "rgba(255,255,255,0.8)" : colors.textSecondary }]}>
+        {formatAudioTime(position || duration)}
+      </Text>
+    </View>
+  );
+};
+
 const formatLastSeen = (lastSeen: string | null) => {
   if (!lastSeen) return "Offline";
   const lastSeenDate = new Date(lastSeen);
@@ -126,6 +235,12 @@ export default function ChatDetailScreen() {
   const [savingMedia, setSavingMedia] = useState(false);
   const [pendingMedia, setPendingMedia] = useState<Array<{ uri: string; fileName: string; mimeType: string; mediaType: "image" | "video" }>>([]);
   const [showMediaPreview, setShowMediaPreview] = useState(false);
+
+  // Audio Recording State
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Edit / Delete state
   const [selectedMessage, setSelectedMessage] = useState<any | null>(null);
@@ -250,7 +365,9 @@ export default function ChatDetailScreen() {
 
   const uploadMediaToAppwrite = async (uri: string, fileName: string, mimeType: string) => {
     const isVideo = mimeType?.includes("video");
-    const name = `file_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`;
+    const isAudio = mimeType?.includes("audio");
+    const fileExt = isVideo ? 'mp4' : isAudio ? 'mp4' : 'jpg';
+    const name = `file_${Date.now()}.${fileExt}`;
     const type = mimeType || "image/jpeg";
     const file = { uri, name, type, size: 0 };
     const result = await storage.createFile(STORAGE_BUCKET_ID, ID.unique(), file);
@@ -431,6 +548,91 @@ export default function ChatDetailScreen() {
     }
   };
 
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== "granted") {
+        Alert.alert("Permission Required", "Please allow microphone access to record voice notes.");
+        return;
+      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(recording);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("Failed to start recording", err);
+      Alert.alert("Error", "Could not start recording.");
+    }
+  };
+
+  const cancelRecording = async () => {
+    if (!recording) return;
+    setIsRecording(false);
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    try {
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
+      setRecording(null);
+      setRecordingDuration(0);
+    } catch (error) {
+      console.error("Error cancelling recording:", error);
+    }
+  };
+
+  const stopAndSendRecording = async () => {
+    if (!recording) return;
+    setIsRecording(false);
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    try {
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
+      const uri = recording.getURI();
+      setRecording(null);
+      setRecordingDuration(0);
+
+      if (uri) {
+        setUploadingMedia(true);
+        try {
+          const fileName = `audio_${Date.now()}.mp4`;
+          const mediaUrl = await uploadMediaToAppwrite(uri, fileName, "audio/mp4");
+          const finalMediaUrl = `${mediaUrl}&duration=${recordingDuration}`;
+          
+          await sendMessage(
+            id as string, otherUserId, otherUserName,
+            "🎤 Voice note",
+            itemId as string, itemTitle as string, finalMediaUrl, "audio"
+          );
+          await loadMessages(false);
+          isAtBottom.current = true;
+          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+        } catch (error: any) {
+          Alert.alert("Upload Failed", error?.message || "Failed to send voice note");
+        } finally {
+          setUploadingMedia(false);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to stop recording", error);
+    }
+  };
+
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
   // Long-press handler — shows actions menu for sender's own non-deleted messages
   const handleLongPress = (item: any) => {
     if (item.senderId !== currentUserId) return;
@@ -535,6 +737,9 @@ export default function ChatDetailScreen() {
           onPlay={() => setViewVideoUri(item.mediaUrl)}
         />
       );
+    }
+    if (item.mediaType === "audio") {
+      return <AudioMessagePreview uri={item.mediaUrl} isMyMessage={isMyMessage} />;
     }
     return null;
   };
@@ -743,45 +948,76 @@ export default function ChatDetailScreen() {
 
       {/* Input bar */}
       <View style={[styles.inputContainer, { backgroundColor: colors.white, borderTopColor: colors.border }]}>
-        <TouchableOpacity
-          style={styles.attachButton}
-          onPress={() => setShowMediaOptions(true)}
-          disabled={uploadingMedia}
-        >
-          {uploadingMedia ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Ionicons name="add-circle" size={30} color={colors.primary} />
-          )}
-        </TouchableOpacity>
+        {!isRecording ? (
+          <>
+            <TouchableOpacity
+              style={styles.attachButton}
+              onPress={() => setShowMediaOptions(true)}
+              disabled={uploadingMedia}
+            >
+              {uploadingMedia ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="add-circle" size={30} color={colors.primary} />
+              )}
+            </TouchableOpacity>
 
-        <View style={[styles.inputWrapper, { backgroundColor: colors.gray, borderColor: colors.border }]}>
-          <TextInput
-            style={[styles.input, { color: colors.textPrimary }]}
-            value={newMessage}
-            onChangeText={setNewMessage}
-            placeholder="Type a message..."
-            placeholderTextColor={colors.textLight}
-            multiline
-            maxLength={500}
-            editable={!sending}
-          />
-        </View>
+            <View style={[styles.inputWrapper, { backgroundColor: colors.gray, borderColor: colors.border }]}>
+              <TextInput
+                style={[styles.input, { color: colors.textPrimary }]}
+                value={newMessage}
+                onChangeText={setNewMessage}
+                placeholder="Type a message..."
+                placeholderTextColor={colors.textLight}
+                multiline
+                maxLength={500}
+                editable={!sending}
+              />
+            </View>
 
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            { backgroundColor: newMessage.trim() && !sending ? colors.primary : colors.gray },
-          ]}
-          onPress={handleSend}
-          disabled={sending || !newMessage.trim()}
-        >
-          {sending ? (
-            <ActivityIndicator size="small" color={colors.white} />
-          ) : (
-            <Ionicons name="send" size={18} color={newMessage.trim() ? colors.white : colors.textLight} />
-          )}
-        </TouchableOpacity>
+            {newMessage.trim() ? (
+              <TouchableOpacity
+                style={[
+                  styles.sendButton,
+                  { backgroundColor: !sending ? colors.primary : colors.gray },
+                ]}
+                onPress={handleSend}
+                disabled={sending}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Ionicons name="send" size={18} color={colors.white} />
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.sendButton, { backgroundColor: colors.primary }]}
+                onPress={startRecording}
+                disabled={sending || uploadingMedia}
+              >
+                <Ionicons name="mic" size={20} color={colors.white} />
+              </TouchableOpacity>
+            )}
+          </>
+        ) : (
+          <View style={styles.recordingContainer}>
+            <View style={styles.recordingIndicator}>
+              <View style={styles.recordingDot} />
+              <Text style={[styles.recordingTime, { color: colors.textPrimary }]}>
+                {formatRecordingTime(recordingDuration)}
+              </Text>
+            </View>
+            <View style={styles.recordingActions}>
+              <TouchableOpacity onPress={cancelRecording} style={styles.recordingCancelBtn}>
+                <Ionicons name="trash" size={22} color="#EF4444" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={stopAndSendRecording} style={styles.recordingSendBtn}>
+                <Ionicons name="send" size={18} color={colors.white} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
 
       {/* ── Message Actions Bottom Sheet ── */}
@@ -1091,6 +1327,24 @@ const styles = StyleSheet.create({
   },
   fileName: { fontSize: 13, fontWeight: "500", flex: 1 },
 
+  // Audio Message Preview
+  audioContainer: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    borderRadius: 20, padding: 8, width: 200,
+  },
+  audioPlayButton: {
+    width: 36, height: 36, borderRadius: 18,
+    justifyContent: "center", alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+  audioTrack: {
+    flex: 1, height: 4, borderRadius: 2,
+    backgroundColor: "rgba(0,0,0,0.1)",
+    overflow: "hidden",
+  },
+  audioProgress: { height: "100%", borderRadius: 2 },
+  audioTime: { fontSize: 11, fontWeight: "500", minWidth: 30 },
+
   // Deleted
   deletedRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   deletedText: { fontSize: 13, fontStyle: "italic" },
@@ -1131,6 +1385,22 @@ const styles = StyleSheet.create({
   sendButton: {
     width: 40, height: 40, borderRadius: 20,
     justifyContent: "center", alignItems: "center", marginBottom: 2,
+  },
+
+  // Recording UI
+  recordingContainer: {
+    flex: 1, flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between", paddingHorizontal: 4,
+    height: 40,
+  },
+  recordingIndicator: { flexDirection: "row", alignItems: "center", gap: 8 },
+  recordingDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#EF4444" },
+  recordingTime: { fontSize: 16, fontWeight: "500" },
+  recordingActions: { flexDirection: "row", alignItems: "center", gap: 16 },
+  recordingCancelBtn: { width: 40, height: 40, justifyContent: "center", alignItems: "center" },
+  recordingSendBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "#3B82F6", justifyContent: "center", alignItems: "center",
   },
 
   // Actions sheet
