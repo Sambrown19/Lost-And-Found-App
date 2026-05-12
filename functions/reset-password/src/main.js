@@ -15,25 +15,27 @@ export default async ({ req, res, log, error }) => {
   try {
     let body = req.body;
 
-    // Robust body parsing
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body);
       } catch (parseError) {
-        log('Body is string but not JSON, using as is');
+        log('Body is string but not JSON');
       }
     }
 
-    const { userId, code, mode, newPassword } = body;
-    // mode: 'verify' (default, email verification) | 'reset' (password reset)
+    const { userId, code, newPassword } = body;
 
-    if (!userId || !code) {
-      return res.json({ success: false, message: 'Missing userId or code' }, 400);
+    if (!userId || !code || !newPassword) {
+      return res.json({ success: false, message: 'Missing userId, code, or newPassword' }, 400);
     }
 
-    log(`Processing OTP for user: ${userId}, mode: ${mode || 'verify'}`);
+    if (newPassword.length < 8) {
+      return res.json({ success: false, message: 'Password must be at least 8 characters' }, 400);
+    }
 
-    // 1. Find the code in the database
+    log(`Verifying OTP for password reset: userId=${userId}`);
+
+    // 1. Find the OTP
     const response = await databases.listDocuments(databaseId, otpCollectionId, [
       Query.equal('userId', userId),
       Query.equal('code', code),
@@ -45,35 +47,23 @@ export default async ({ req, res, log, error }) => {
 
     const otpDoc = response.documents[0];
 
-    // 2. Check if expired
+    // 2. Check expiry
     if (new Date(otpDoc.expiresAt) < new Date()) {
       await databases.deleteDocument(databaseId, otpCollectionId, otpDoc.$id);
       return res.json({ success: false, message: 'Code has expired. Please request a new one.' }, 400);
     }
 
-    // 3. Delete the used code
+    // 3. Update the password using admin SDK
+    await users.updatePassword(userId, newPassword);
+    log(`Password updated successfully for userId=${userId}`);
+
+    // 4. Delete the used OTP
     await databases.deleteDocument(databaseId, otpCollectionId, otpDoc.$id);
 
-    if (mode === 'reset') {
-      // Password reset mode
-      if (!newPassword) {
-        return res.json({ success: false, message: 'Missing newPassword for reset mode' }, 400);
-      }
-      if (newPassword.length < 8) {
-        return res.json({ success: false, message: 'Password must be at least 8 characters' }, 400);
-      }
-      await users.updatePassword(userId, newPassword);
-      log(`Password updated successfully for userId=${userId}`);
-      return res.json({ success: true, message: 'Password updated successfully' });
-    } else {
-      // Default: email verification mode
-      await users.updateEmailVerification(userId, true);
-      log(`Email verified successfully for userId=${userId}`);
-      return res.json({ success: true, message: 'Email verified successfully!' });
-    }
+    return res.json({ success: true, message: 'Password updated successfully' });
 
   } catch (err) {
-    error(err.message);
+    error(`Unhandled error: ${err.message}`);
     return res.json({ success: false, message: err.message }, 500);
   }
 };

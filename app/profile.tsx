@@ -348,6 +348,7 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          {/* Privacy & Security */}
           <TouchableOpacity
             style={[styles.deleteButton, { backgroundColor: colors.white }]}
             onPress={handleDeleteAccount}
@@ -427,4 +428,14 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, minWidth: '45%', padding: 16, borderRadius: 12, alignItems: 'center' },
   statNumber: { fontSize: 24, fontWeight: '700', marginBottom: 4 },
   statLabel: { fontSize: 12 },
+  // Privacy & Security section
+  sectionTitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
+  menuRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingVertical: 14, borderBottomWidth: 0,
+  },
+  menuIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  menuRowContent: { flex: 1 },
+  menuRowLabel: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
+  menuRowSub: { fontSize: 12 },
 });

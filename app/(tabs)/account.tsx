@@ -283,16 +283,16 @@ export default function AccountScreen() {
             />
           </View>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert('Privacy & Security', 'Manage your data and account privacy settings. Coming soon!')}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/privacy-security')}>
             <View style={[styles.menuIconContainer, { backgroundColor: colors.gray }]}>
               <Ionicons name="lock-closed-outline" size={22} color={colors.textPrimary} />
             </View>
             <View style={styles.menuTextContainer}>
               <Text style={[styles.menuText, { color: colors.textPrimary }]}>
-                Privacy & Security
+                Privacy &amp; Security
               </Text>
               <Text style={[styles.menuSubtext, { color: colors.textSecondary }]}>
-                Manage your data & account
+                Manage your data &amp; account
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textLight} />

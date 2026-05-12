@@ -6,7 +6,6 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -24,6 +23,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const validateEmail = (email: string) => {
     // Must end with @pentvars.edu.gh
@@ -32,16 +32,15 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
+    setErrorMessage("");
+
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+      setErrorMessage("Please fill in all fields.");
       return;
     }
 
     if (!validateEmail(email)) {
-      Alert.alert(
-        "Invalid Email",
-        "Please use your Pentecost University email address (@pentvars.edu.gh)",
-      );
+      setErrorMessage("Please use your Pentecost University email address (@pentvars.edu.gh).");
       return;
     }
 
@@ -94,23 +93,14 @@ export default function LoginScreen() {
         router.replace("/(tabs)/home");
       }, 100);
     } catch (error: any) {
-      console.error("Login error:", error);
-
       if (error.code === 401) {
-        Alert.alert(
-          "Login Failed",
-          "Invalid email or password. Please check your credentials and try again.",
-        );
+        setErrorMessage("Incorrect email or password. Please try again.");
       } else if (error.code === 429) {
-        Alert.alert(
-          "Too Many Attempts",
-          "Too many login attempts. Please try again later.",
-        );
+        setErrorMessage("Too many login attempts. Please wait a moment and try again.");
       } else {
-        Alert.alert(
-          "Error",
-          error.message || "Failed to login. Please try again.",
-        );
+        // Only log truly unexpected errors
+        console.error("Unexpected login error:", error);
+        setErrorMessage(error.message || "Something went wrong. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -158,7 +148,7 @@ export default function LoginScreen() {
               placeholder="youremail@pentvars.edu.gh"
               placeholderTextColor={colors.textLight}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(t) => { setEmail(t); if (errorMessage) setErrorMessage(""); }}
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!loading}
@@ -182,7 +172,7 @@ export default function LoginScreen() {
                 placeholder="Enter your password"
                 placeholderTextColor={colors.textLight}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(t) => { setPassword(t); if (errorMessage) setErrorMessage(""); }}
                 secureTextEntry={!showPassword}
                 editable={!loading}
               />
@@ -200,6 +190,14 @@ export default function LoginScreen() {
             </View>
           </View>
 
+          {/* Inline error message */}
+          {!!errorMessage && (
+            <View style={[styles.errorBanner, { backgroundColor: "#FEF2F2", borderColor: "#FCA5A5" }]}>
+              <Ionicons name="alert-circle-outline" size={16} color="#EF4444" />
+              <Text style={styles.errorBannerText}>{errorMessage}</Text>
+            </View>
+          )}
+
           {/* Login Button */}
           <TouchableOpacity
             style={[
@@ -215,6 +213,15 @@ export default function LoginScreen() {
             ) : (
               <Text style={[styles.buttonText, { color: colors.white }]}>Login</Text>
             )}
+          </TouchableOpacity>
+
+          {/* Forgot Password */}
+          <TouchableOpacity
+            onPress={() => router.push("/(auth)/forgot-password")}
+            style={styles.forgotLink}
+            disabled={loading}
+          >
+            <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot Password?</Text>
           </TouchableOpacity>
 
           {/* Divider */}
@@ -319,6 +326,31 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  forgotLink: {
+    alignItems: "center",
+    marginTop: 14,
+  },
+  forgotText: {
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  errorBannerText: {
+    fontSize: 13,
+    color: "#EF4444",
+    flex: 1,
+    lineHeight: 18,
   },
   dividerContainer: {
     flexDirection: "row",

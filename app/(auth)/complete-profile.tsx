@@ -1,7 +1,7 @@
 // app/(auth)/complete-profile.tsx
 
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -233,7 +233,7 @@ export default function CompleteProfileScreen() {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>Primary Campus Location</Text>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Primary Hall Location</Text>
           <TouchableOpacity
             style={[
               styles.dropdownButton,
@@ -249,7 +249,7 @@ export default function CompleteProfileScreen() {
               !campus && styles.placeholder,
               { color: campus ? colors.textPrimary : colors.textLight }
             ]}>
-              {campus || 'Select campus'}
+              {campus || 'Select Hall'}
             </Text>
             <Ionicons
               name={showCampusDropdown ? 'chevron-up' : 'chevron-down'}
