@@ -2,7 +2,7 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -19,6 +19,7 @@ import { account } from "../../config/appwrite";
 export default function LoginScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
+  const navigation = useNavigation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -90,7 +91,15 @@ export default function LoginScreen() {
 
       // Fully verified and profile complete
       setTimeout(() => {
-        router.replace("/(tabs)/home");
+        const rootNavigation = navigation.getParent();
+        if (rootNavigation) {
+          rootNavigation.reset({
+            index: 0,
+            routes: [{ name: "(tabs)" }],
+          });
+        } else {
+          router.replace("/(tabs)/home");
+        }
       }, 100);
     } catch (error: any) {
       if (error.code === 401) {

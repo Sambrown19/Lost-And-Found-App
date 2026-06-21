@@ -25,6 +25,7 @@ export interface Item {
   images: string;
   status: "active" | "claimed" | "resolved";
   createdAt: string;
+  reward?: string;
 }
 
 export const createItem = async (
@@ -57,6 +58,7 @@ export const createItem = async (
       images: data.images,
       status: data.status,
       createdAt: new Date().toISOString(),
+      reward: data.reward || "",
     },
   );
 

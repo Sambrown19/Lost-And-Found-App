@@ -36,6 +36,7 @@ export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const [loading, setLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [activeTab, setActiveTab] = useState<"recent" | "lost" | "found">("recent");
@@ -79,7 +80,7 @@ export default function HomeScreen() {
     }
   };
 
-  const loadItems = async (showLoading = true) => {
+  const loadItems = async (showLoading = true, uid?: string | null) => {
     if (showLoading) setLoadingItems(true);
     try {
       let data: Item[] = [];
@@ -94,8 +95,10 @@ export default function HomeScreen() {
       itemsRef.current = data;
       setFilteredItems(data);
       if (searchQueryRef.current) performSearch(searchQueryRef.current, data);
-    } catch (error) {
-      console.error("Error loading items:", error);
+    } catch (error: any) {
+      if (error?.code !== 401) {
+        console.error("Error loading items:", error);
+      }
     } finally {
       if (showLoading) setLoadingItems(false);
       setInitialLoading(false);
@@ -191,8 +194,18 @@ export default function HomeScreen() {
   useEffect(() => {
     const initialLoad = async () => {
       setInitialLoading(true);
+      // Get the current user ID first so we can filter items correctly
+      let uid: string | null = null;
+      try {
+        const user = await account.get();
+        uid = user.$id;
+        setCurrentUserId(uid);
+      } catch (e) {
+        console.error("Could not get current user:", e);
+      }
       await Promise.all([loadUserProfile(), loadSearchHistory()]);
-      await loadItems();
+      // Pass uid directly since state may not have updated yet
+      await loadItems(true, uid);
     };
     initialLoad();
   }, []);
@@ -218,8 +231,10 @@ export default function HomeScreen() {
           }
 
           setHasUnreadNotifications(hasUnreadConv || hasUnreadDb);
-        } catch (error) {
-          console.log("Could not load notifications status", error);
+        } catch (error: any) {
+          if (error?.code !== 401) {
+            console.log("Could not load notifications status", error);
+          }
         }
       };
       
@@ -496,7 +511,7 @@ export default function HomeScreen() {
           </View>
         ) : (
           filteredItems.map((item) => (
-            <ItemCard key={item.$id} item={item} highlightText={searchQuery} />
+            <ItemCard key={item.$id} item={item} highlightText={searchQuery} currentUserId={currentUserId} />
           ))
         )}
       </ScrollView>

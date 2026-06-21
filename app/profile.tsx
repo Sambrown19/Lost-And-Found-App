@@ -1,7 +1,7 @@
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -26,6 +26,7 @@ import {
 export default function ProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const navigation = useNavigation();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isViewingOther = !!id;
 
@@ -158,7 +159,15 @@ export default function ProfileScreen() {
               await account.deleteSession('current');
 
               // 3. Navigate back to welcome screen
-              router.replace('/');
+              const rootNavigation = navigation.getParent();
+              if (rootNavigation) {
+                rootNavigation.reset({
+                  index: 0,
+                  routes: [{ name: "index" }],
+                });
+              } else {
+                router.replace('/');
+              }
             } catch (error: any) {
               console.error('Delete account error:', error);
               setLoading(false);

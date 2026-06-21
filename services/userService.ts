@@ -80,8 +80,10 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     }
 
     return null;
-  } catch (error) {
-    console.error("Get profile error:", error);
+  } catch (error: any) {
+    if (error?.code !== 401) {
+      console.error("Get profile error:", error);
+    }
     return null;
   }
 };

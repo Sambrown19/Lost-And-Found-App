@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { databases, DATABASE_ID, USERS_COLLECTION_ID } from "@/config/appwrite";
+import { databases, DATABASE_ID, USERS_COLLECTION_ID, ITEMS_COLLECTION_ID } from "@/config/appwrite";
 import { Query } from "react-native-appwrite";
 
 const getInitials = (name: string) => {
@@ -61,6 +61,8 @@ export default function ConversationsScreen() {
   // Fix: Use a ref for the image cache so the interval closure doesn't get a strict, empty copy!
   const userImagesRef = useRef<Record<string, string>>({});
   const userOnlineRef = useRef<Record<string, boolean>>({}); // cache online status
+  // Cache item type and owner so we can blur "found" items for non-owners
+  const itemTypeRef = useRef<Record<string, { type: string; ownerId: string }>>({}); 
   const [imagesVersion, setImagesVersion] = useState(0); // Dummy state to trigger UI re-renders 
 
   const fetchUserProfileImage = async (userId: string) => {
@@ -84,6 +86,19 @@ export default function ConversationsScreen() {
     }
   };
 
+  const fetchItemInfo = async (itemId: string) => {
+    if (itemTypeRef.current[itemId] !== undefined) return itemTypeRef.current[itemId];
+    try {
+      const doc = await databases.getDocument(DATABASE_ID, ITEMS_COLLECTION_ID, itemId);
+      const info = { type: doc.type || "lost", ownerId: doc.userId || "" };
+      itemTypeRef.current[itemId] = info;
+      setImagesVersion(v => v + 1);
+      return info;
+    } catch {
+      return { type: "lost", ownerId: "" };
+    }
+  };
+
   const loadConversations = async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
@@ -92,7 +107,7 @@ export default function ConversationsScreen() {
       const data = await getUserConversations();
       setConversations(data);
       
-      // Fetch profile images for all participants
+      // Fetch profile images for all participants and item info for blurring
       for (const conv of data) {
         let participants: string[] = Array.isArray(conv.participants)
           ? conv.participants
@@ -100,6 +115,10 @@ export default function ConversationsScreen() {
         const otherId = participants[0] === user.$id ? participants[1] : participants[0];
         if (otherId) {
           await fetchUserProfileImage(otherId);
+        }
+        // Fetch item type for blur logic (only if there's an item image to potentially blur)
+        if (conv.itemId && conv.itemImage) {
+          fetchItemInfo(conv.itemId); // fire-and-forget, ref updates trigger re-render via imagesVersion
         }
       }
     } catch (error) {
@@ -153,6 +172,12 @@ export default function ConversationsScreen() {
     const avatarColor = getRandomColor(otherUserId || otherUserName);
     const profileImage = userImagesRef.current[otherUserId] || "";
     const isOtherOnline = userOnlineRef.current[otherUserId] || false;
+
+    // Blur "found" item thumbnails for users who aren't the item owner
+    const itemInfo = item.itemId ? itemTypeRef.current[item.itemId] : undefined;
+    const isFoundItem = itemInfo?.type === "found";
+    const isItemOwner = !!itemInfo && itemInfo.ownerId === currentUserId;
+    const shouldBlurThumb = isFoundItem && !isItemOwner;
 
     return (
       <TouchableOpacity
@@ -239,7 +264,21 @@ export default function ConversationsScreen() {
             <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
           )}
           {item.itemImage ? (
-            <Image source={{ uri: item.itemImage }} style={[styles.itemThumb, { borderColor: colors.border }]} />
+            <View style={[styles.itemThumbWrapper, { borderColor: colors.border }]}>
+              <Image
+                source={{ uri: item.itemImage }}
+                style={[
+                  styles.itemThumb,
+                  shouldBlurThumb && { opacity: 0 },
+                ]}
+                blurRadius={shouldBlurThumb ? 20 : 0}
+              />
+              {shouldBlurThumb && (
+                <View style={styles.itemThumbBlurOverlay}>
+                  <Ionicons name="eye-off-outline" size={14} color="#FFFFFF" />
+                </View>
+              )}
+            </View>
           ) : null}
         </View>
       </TouchableOpacity>
@@ -409,8 +448,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   unreadBadgeText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
-  itemThumb: {
+  itemThumbWrapper: {
     width: 36, height: 36, borderRadius: 8, borderWidth: 1,
+    overflow: "hidden",
+    position: "relative",
+  },
+  itemThumb: {
+    width: 36, height: 36, borderRadius: 8,
+  },
+  itemThumbBlurOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 8,
   },
 
   // Empty state

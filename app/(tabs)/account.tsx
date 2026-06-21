@@ -1,6 +1,6 @@
 import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -21,6 +21,7 @@ import { getUserItems } from '../../services/itemsService';
 
 export default function AccountScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { colors, isDark, themePreference, setThemePreference } = useTheme();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -85,7 +86,16 @@ export default function AccountScreen() {
     try {
       await removePushToken();
       await account.deleteSession('current');
-      router.replace('/');
+      
+      const rootNavigation = navigation.getParent();
+      if (rootNavigation) {
+        rootNavigation.reset({
+          index: 0,
+          routes: [{ name: "index" }],
+        });
+      } else {
+        router.replace('/');
+      }
     } catch (error: any) {
       console.error('Logout error:', error);
       Alert.alert('Error', 'Failed to logout. Please try again.');

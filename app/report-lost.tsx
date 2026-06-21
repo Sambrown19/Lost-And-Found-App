@@ -71,6 +71,7 @@ export default function ReportLostScreen() {
     date: "",
     images: [] as string[],
     status: "active" as "active" | "claimed" | "resolved",
+    reward: "",
   });
 
   const formatDate = (date: Date) => {
@@ -181,6 +182,7 @@ export default function ReportLostScreen() {
         description: formData.description || "No additional description",
         date: `${formatDate(selectedDate)} ${formatTime(selectedTime)}`,
         images: formData.images.join(","),
+        reward: offerReward && reward ? reward : "",
       };
       const response = await createItem(finalFormData);
       if (response) {

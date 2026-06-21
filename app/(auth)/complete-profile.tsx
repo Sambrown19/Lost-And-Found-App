@@ -3,7 +3,7 @@
 import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,6 +25,7 @@ import { createUserProfile, uploadProfileImage } from '../../services/userServic
 export default function CompleteProfileScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
+  const navigation = useNavigation();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -139,7 +140,15 @@ export default function CompleteProfileScreen() {
         console.error("Welcome notifications failed:", err);
       }
 
-      router.replace('/(tabs)/home');
+      const rootNavigation = navigation.getParent();
+      if (rootNavigation) {
+        rootNavigation.reset({
+          index: 0,
+          routes: [{ name: "(tabs)" }],
+        });
+      } else {
+        router.replace("/(tabs)/home");
+      }
     } catch (error: any) {
       console.error('Complete profile error:', error);
       Alert.alert('Error', error.message || 'Failed to save profile. Please try again.');

@@ -9,12 +9,16 @@ interface Props {
   item: Item;
   onPress?: () => void;
   highlightText?: string;
+  currentUserId?: string | null;
 }
 
-export default function ItemCard({ item }: Props) {
+export default function ItemCard({ item, currentUserId }: Props) {
   const { colors } = useTheme();
   const statusColor = item.type === "lost" ? "#FF4444" : "#4CAF50";
   const router = useRouter();
+
+  const isOwner = currentUserId !== undefined ? item.userId === currentUserId : true;
+  const shouldBlur = item.type === "found" && !isOwner;
 
   const getFirstImage = () => {
     if (!item.images) return null;
@@ -37,10 +41,21 @@ export default function ItemCard({ item }: Props) {
       activeOpacity={0.85}
     >
       {imageUrl ? (
-        <Image
-          source={{ uri: imageUrl }}
-          style={[styles.image, { backgroundColor: colors.border }]}
-        />
+        <View style={styles.imageWrapper}>
+          <Image
+            source={{ uri: imageUrl }}
+            style={[styles.image, { backgroundColor: colors.border }]}
+            blurRadius={shouldBlur ? 20 : 0}
+          />
+          {shouldBlur && (
+            <View style={styles.blurOverlay}>
+              <View style={styles.blurIconBox}>
+                <Ionicons name="eye-off" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.blurText}>Photos are hidden</Text>
+            </View>
+          )}
+        </View>
       ) : (
         <View style={[styles.imagePlaceholder, { backgroundColor: colors.gray }]}>
           <Ionicons
@@ -72,6 +87,13 @@ export default function ItemCard({ item }: Props) {
           </Text>
         </View>
 
+        {item.type === "lost" && item.reward ? (
+          <View style={styles.rewardBadge}>
+            <Ionicons name="gift-outline" size={12} color="#FFFFFF" />
+            <Text style={styles.rewardBadgeText}>GH₵ {item.reward} Reward</Text>
+          </View>
+        ) : null}
+
         <Text style={[styles.date, { color: colors.textLight }]}>
           {item.createdAt
             ? new Date(item.createdAt).toLocaleDateString()
@@ -92,6 +114,36 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: 160,
+  },
+  imageWrapper: {
+    position: "relative",
+    width: "100%",
+    height: 160,
+    overflow: "hidden",
+  },
+  blurOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 4,
+  },
+  blurIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  blurText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
+    textShadowColor: "rgba(0, 0, 0, 0.4)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   imagePlaceholder: {
     width: "100%",
@@ -115,5 +167,17 @@ const styles = StyleSheet.create({
   category: { fontSize: 12, marginVertical: 4 },
   meta: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   location: { fontSize: 12, flex: 1 },
+  rewardBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    backgroundColor: "#22C55E",
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 5,
+  },
+  rewardBadgeText: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
   date: { fontSize: 11, marginTop: 6 },
 });

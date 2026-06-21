@@ -24,7 +24,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import { account, DATABASE_ID, CONVERSATIONS_COLLECTION_ID, databases, storage, STORAGE_BUCKET_ID, USERS_COLLECTION_ID } from "../../config/appwrite";
+import { account, DATABASE_ID, CONVERSATIONS_COLLECTION_ID, databases, storage, STORAGE_BUCKET_ID, USERS_COLLECTION_ID, ITEMS_COLLECTION_ID } from "../../config/appwrite";
 import { ID, Query } from "react-native-appwrite";
 import {
   getConversationMessages,
@@ -230,6 +230,8 @@ export default function ChatDetailScreen() {
   const [otherUserName, setOtherUserName] = useState("");
   const [otherUserImage, setOtherUserImage] = useState("");
   const [otherUserStatus, setOtherUserStatus] = useState("");
+  const [itemType, setItemType] = useState<string>("lost");
+  const [itemOwnerId, setItemOwnerId] = useState<string>("");
   const [showMediaOptions, setShowMediaOptions] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [savingMedia, setSavingMedia] = useState(false);
@@ -339,6 +341,19 @@ export default function ChatDetailScreen() {
       if (conversation.unreadFor === user.$id && conversation.unreadCount > 0) {
         await markMessagesAsRead(id as string);
       }
+
+      // Fetch item type and owner to determine if header image should be blurred
+      const convItemId = conversation.itemId || (itemId as string);
+      if (convItemId) {
+        try {
+          const itemDoc = await databases.getDocument(DATABASE_ID, ITEMS_COLLECTION_ID, convItemId);
+          setItemType(itemDoc.type || "lost");
+          setItemOwnerId(itemDoc.userId || "");
+        } catch {
+          // Non-critical — leave defaults (no blur)
+        }
+      }
+
       await loadMessages();
     } catch (error) {
       console.error("Init chat error:", error);
@@ -839,12 +854,26 @@ export default function ChatDetailScreen() {
   const renderHeader = () => {
     if (!itemTitle) return null;
     const imageUrl = itemImage ? (Array.isArray(itemImage) ? itemImage[0] : itemImage) : null;
+    const shouldBlurHeader = itemType === "found" && !!itemOwnerId && itemOwnerId !== currentUserId;
     return (
       <TouchableOpacity
         style={[styles.itemInfoCard, { backgroundColor: colors.white }]}
         onPress={() => { if (itemId) router.push(`/item/${itemId}` as any); }}
       >
-        {imageUrl && <Image source={{ uri: imageUrl as string }} style={styles.itemImage} />}
+        {imageUrl && (
+          <View style={styles.itemImageWrapper}>
+            <Image
+              source={{ uri: imageUrl as string }}
+              style={styles.itemImage}
+              blurRadius={shouldBlurHeader ? 20 : 0}
+            />
+            {shouldBlurHeader && (
+              <View style={styles.itemImageBlurOverlay}>
+                <Ionicons name="eye-off-outline" size={16} color="#FFFFFF" />
+              </View>
+            )}
+          </View>
+        )}
         <View style={styles.itemInfo}>
           <Text style={[styles.itemTitle, { color: colors.textPrimary }]} numberOfLines={1}>{itemTitle}</Text>
           <Text style={[styles.itemSubtitle, { color: colors.textSecondary }]}>Tap to view item</Text>
@@ -1287,7 +1316,15 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 3,
   },
+  itemImageWrapper: { width: 48, height: 48, borderRadius: 10, overflow: "hidden", position: "relative" },
   itemImage: { width: 48, height: 48, borderRadius: 10 },
+  itemImageBlurOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 10,
+  },
   itemInfo: { flex: 1, justifyContent: "center" },
   itemTitle: { fontSize: 14, fontWeight: "700", marginBottom: 2 },
   itemSubtitle: { fontSize: 12 },

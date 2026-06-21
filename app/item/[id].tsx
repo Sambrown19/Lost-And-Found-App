@@ -26,8 +26,16 @@ export default function ItemDetailScreen() {
   const [item, setItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // undefined = still fetching, null = not logged in / failed, string = user ID
+  const [currentUserId, setCurrentUserId] = useState<string | null | undefined>(undefined);
   const [isOwner, setIsOwner] = useState(false);
+  // ownerChecked: true once we know for certain whether the viewer is the owner.
+  // Prevents blur from flashing on-screen before identity is resolved.
+  const [ownerChecked, setOwnerChecked] = useState(false);
+
+  // Only blur after we've confirmed identity to prevent false flash
+  const isFoundItem = item?.type === "found";
+  const shouldBlurImages = isFoundItem && ownerChecked && !isOwner;
 
   const imageArray = Array.isArray(item?.images)
     ? item?.images
@@ -53,8 +61,12 @@ export default function ItemDetailScreen() {
     try {
       const user = await account.get();
       setCurrentUserId(user.$id);
+      return user.$id;
     } catch (error) {
       console.error("Error getting current user:", error);
+      // null = confirmed not logged in
+      setCurrentUserId(null);
+      return null;
     }
   };
 
@@ -75,8 +87,10 @@ export default function ItemDetailScreen() {
   };
 
   useEffect(() => {
-    if (item && currentUserId) {
-      setIsOwner(item.userId === currentUserId);
+    // undefined means still loading — wait before checking ownership
+    if (item && currentUserId !== undefined) {
+      setIsOwner(!!currentUserId && item.userId === currentUserId);
+      setOwnerChecked(true);
     }
   }, [item, currentUserId]);
 
@@ -158,10 +172,24 @@ export default function ItemDetailScreen() {
         <View style={styles.imageContainer}>
           {imageArray.length > 0 ? (
             <>
-              <Image
-                source={{ uri: imageArray[currentImageIndex] }}
-                style={styles.mainImage}
-              />
+              <View style={styles.mainImageWrapper}>
+                <Image
+                  source={{ uri: imageArray[currentImageIndex] }}
+                  style={styles.mainImage}
+                  blurRadius={shouldBlurImages ? 22 : 0}
+                />
+                {shouldBlurImages && (
+                  <View style={styles.imageBlurOverlay}>
+                    <View style={styles.imageBlurIconBox}>
+                      <Ionicons name="eye-off" size={32} color="#FFFFFF" />
+                    </View>
+                    <Text style={styles.imageBlurTitle}>Photos are hidden</Text>
+                    <Text style={styles.imageBlurSubtitle}>
+                      Contact the finder to verify your ownership
+                    </Text>
+                  </View>
+                )}
+              </View>
 
               {imageArray.length > 1 && (
                 <>
@@ -203,7 +231,11 @@ export default function ItemDetailScreen() {
                         currentImageIndex === index && { borderColor: colors.primary, borderWidth: 2 },
                       ]}
                     >
-                      <Image source={{ uri: image }} style={styles.thumbnailImage} />
+                      <Image
+                        source={{ uri: image }}
+                        style={styles.thumbnailImage}
+                        blurRadius={shouldBlurImages ? 15 : 0}
+                      />
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -242,6 +274,25 @@ export default function ItemDetailScreen() {
             <View style={styles.infoRow}>
               <Ionicons name="information-circle" size={16} color={colors.primary} />
               <Text style={[styles.infoText, { color: colors.textSecondary }]}>Status: {item.status}</Text>
+            </View>
+          )}
+
+          {/* Reward banner — only for lost items with a reward */}
+          {item.type === "lost" && item.reward ? (
+            <View style={styles.rewardBanner}>
+              <Ionicons name="gift" size={20} color="#FFFFFF" />
+              <View style={styles.rewardBannerText}>
+                <Text style={styles.rewardBannerLabel}>Reward Offered</Text>
+                <Text style={styles.rewardBannerAmount}>GH₵ {item.reward}</Text>
+              </View>
+            </View>
+          ) : null}
+          {shouldBlurImages && (
+            <View style={[styles.privacyBanner, { backgroundColor: isDark ? '#1a2a1a' : '#e8f5e9' }]}>
+              <Ionicons name="shield-checkmark" size={18} color="#4CAF50" />
+              <Text style={[styles.privacyBannerText, { color: isDark ? '#81c784' : '#2e7d32' }]}>
+                Item photos are blurred to prevent false claims. Contact the finder to verify ownership.
+              </Text>
             </View>
           )}
 
@@ -331,7 +382,56 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
   },
   imageContainer: { position: "relative", width: "100%", height: 300 },
+  mainImageWrapper: { width: "100%", height: 300, position: "relative" },
   mainImage: { width: "100%", height: 300, resizeMode: "cover" },
+  imageBlurOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  imageBlurIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  imageBlurTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 6,
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  imageBlurSubtitle: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 12,
+    textAlign: "center",
+    paddingHorizontal: 30,
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  privacyBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  privacyBannerText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "500",
+  },
   navButton: {
     position: "absolute", top: "50%", transform: [{ translateY: -25 }],
     width: 50, height: 50, borderRadius: 25, backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -362,6 +462,20 @@ const styles = StyleSheet.create({
   divider: { height: 1, marginVertical: 20 },
   sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 8 },
   description: { fontSize: 15, lineHeight: 22 },
+  rewardBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#22C55E",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  rewardBannerText: { flex: 1 },
+  rewardBannerLabel: { color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: "600", marginBottom: 2 },
+  rewardBannerAmount: { color: "#FFFFFF", fontSize: 22, fontWeight: "800" },
   userInfoContainer: { flexDirection: "row", alignItems: "center", gap: 12 },
   userAvatar: { width: 50, height: 50, borderRadius: 25, justifyContent: "center", alignItems: "center" },
   userAvatarText: { fontSize: 20, fontWeight: "700", color: "#FFFFFF" },
